@@ -31,7 +31,7 @@ app.use(
 );
 
 // Explicitly handle preflight requests for all endpoints
-app.options("*", cors());
+app.options(/(.*)/, cors(corsOptions));
 
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
