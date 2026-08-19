@@ -2,7 +2,7 @@
 const proceedToPaymentButton = document.getElementById("proceedToPayment");
 
 const paymentPayload = {
-  targetOrigins: ["https://localhost:5500", "https://localhost:3000"],
+  targetOrigins: ["https://127.0.0.1:5500", "https://localhost:5500"],
   clientVersion: "1.0",
   allowedCardNetworks: ["VISA", "MASTERCARD"],
   allowedPaymentTypes: [
@@ -41,7 +41,7 @@ const paymentPayload = {
 const getSessionContext = async (event) => {
   event.preventDefault();
   try {
-    const response = await axios.post("http://localhost:3000/checkout-session", paymentPayload);
+    const response = await axios.post("https://unified-checkout-demo.onrender.com/checkout-session", paymentPayload);
     const captureContext = response.data?.captureContext;
 
     if (!captureContext) {
