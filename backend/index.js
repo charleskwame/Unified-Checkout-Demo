@@ -15,23 +15,25 @@ app.use(express.json());
 
 const allowedOrigins = ["http://127.0.0.1:5500", "http://localhost:5500", "http://localhost:3000"];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin (like mobile apps or curl requests)
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error("Not allowed by CORS"));
-    },
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  }),
-);
+app.use(cors());
 
-// Explicitly handle preflight requests for all endpoints
-app.options(/(.*)/, cors(corsOptions));
+// app.use(
+//   cors({
+//     origin: function (origin, callback) {
+//       // allow requests with no origin (like mobile apps or curl requests)
+//       if (!origin || allowedOrigins.includes(origin)) {
+//         return callback(null, true);
+//       }
+//       return callback(new Error("Not allowed by CORS"));
+//     },
+//     methods: ["GET", "POST", "OPTIONS"],
+//     allowedHeaders: ["Content-Type", "Authorization"],
+//     credentials: true,
+//   }),
+// );
+
+// // Explicitly handle preflight requests for all endpoints
+// app.options(/(.*)/, cors(corsOptions));
 
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
