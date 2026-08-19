@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon index.js",
-    "start": "pnpm install && node index.js",
+    "start": "node index.js",
     "build": "echo \"No build step required for plain JS\""
   },
   "keywords": [],
