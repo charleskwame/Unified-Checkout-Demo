@@ -15,7 +15,11 @@ app.use(express.json());
 
 const allowedOrigins = ["https://unified-checkout-frontend.vercel.app/"];
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://unified-checkout-frontend.vercel.app",
+  })
+);
 
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
