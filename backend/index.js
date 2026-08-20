@@ -280,11 +280,48 @@ function extractTransientToken(paymentResult) {
   return null;
 }
 
+// function buildPaymentPayload(paymentResult, transientToken) {
+//   const orderInfo =
+//     paymentResult.data?.orderInformation ||
+//     paymentResult.orderInformation ||
+//     paymentResult.orderInformationData || {};
+
+//   const amountDetails = orderInfo.amountDetails || {};
+
+//   const payload = {
+//     clientReferenceInformation: {
+//       code: `UC-${Date.now()}`,
+//     },
+//     processingInformation: {
+//       actionList: ["TOKEN_CREATE"],
+//       actionTokenTypes: ["customer"],
+//     },
+//     paymentInformation: {
+//       token: {
+//         id: transientToken,
+//       },
+//     },
+//     orderInformation: {
+//       amountDetails: {
+//         totalAmount: amountDetails.totalAmount || "0.00",
+//         currency: amountDetails.currency || "USD",
+//       },
+//     },
+//   };
+
+//   if (orderInfo.billTo && typeof orderInfo.billTo === "object") {
+//     payload.orderInformation.billTo = orderInfo.billTo;
+//   }
+
+//   if (paymentResult.billTo && typeof paymentResult.billTo === "object") {
+//     payload.orderInformation.billTo = paymentResult.billTo;
+//   }
+
+//   return payload;
+// }
+
 function buildPaymentPayload(paymentResult, transientToken) {
-  const orderInfo =
-    paymentResult.data?.orderInformation ||
-    paymentResult.orderInformation ||
-    paymentResult.orderInformationData || {};
+  const orderInfo = paymentResult.data?.orderInformation || paymentResult.orderInformation || paymentResult.orderInformationData || {};
 
   const amountDetails = orderInfo.amountDetails || {};
 
@@ -292,12 +329,9 @@ function buildPaymentPayload(paymentResult, transientToken) {
     clientReferenceInformation: {
       code: `UC-${Date.now()}`,
     },
-    processingInformation: {
-      actionList: ["TOKEN_CREATE"],
-      actionTokenTypes: ["customer"],
-    },
+    // Fix: Pass transientToken directly in paymentInformation
     paymentInformation: {
-      token: {
+      transientToken: {
         id: transientToken,
       },
     },
@@ -309,11 +343,16 @@ function buildPaymentPayload(paymentResult, transientToken) {
     },
   };
 
-  if (orderInfo.billTo && typeof orderInfo.billTo === "object") {
-    payload.orderInformation.billTo = orderInfo.billTo;
+  // Keep customer token creation only if specifically intended
+  if (paymentResult.actionList) {
+    payload.processingInformation = {
+      actionList: paymentResult.actionList,
+    };
   }
 
-  if (paymentResult.billTo && typeof paymentResult.billTo === "object") {
+  if (orderInfo.billTo && typeof orderInfo.billTo === "object") {
+    payload.orderInformation.billTo = orderInfo.billTo;
+  } else if (paymentResult.billTo && typeof paymentResult.billTo === "object") {
     payload.orderInformation.billTo = paymentResult.billTo;
   }
 
