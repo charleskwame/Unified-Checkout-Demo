@@ -10,7 +10,7 @@
                 },
                 {
                     "key": "Access-Control-Allow-Origin",
-                    "value": "https://unified-checkout-frontend.vercel.app/"
+                    "value": "https://unified-checkout-frontend.vercel.app"
                 },
                 {
                     "key": "Access-Control-Allow-Methods",
