@@ -190,7 +190,9 @@ const getSessionContext = async (event) => {
 
     if (window.VAS && typeof window.VAS.UnifiedCheckout === "function") {
       await startWithVAS(captureContext);
-
+      isProcessing = false;
+      proceedToPaymentButton.innerHTML = `${isProcessing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}`;
+      proceedToPaymentButton.removeAttribute("disabled");
       return;
     }
 

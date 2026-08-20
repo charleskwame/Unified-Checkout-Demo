@@ -57,7 +57,6 @@ const createCheckoutSession = async (req, res) => {
 
     const responseText = await response.text();
     const data = safeParseJson(responseText);
-    console.log("CyberSource response:", JSON.stringify(data, null, 2));
 
     if (!response.ok) {
       return res.status(response.status).json({
@@ -69,7 +68,6 @@ const createCheckoutSession = async (req, res) => {
     const captureContext = extractCaptureContext(response, data, responseText);
 
     if (!captureContext) {
-      console.warn("No captureContext token found in response object:", data);
       return res.status(500).json({
         error: "CyberSource returned a 200 response, but no Capture Context token was generated.",
         responseHeaders: Object.fromEntries(response.headers.entries()),
