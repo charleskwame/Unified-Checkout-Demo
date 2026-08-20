@@ -127,10 +127,15 @@ const startWithVAS = async (captureContext) => {
       console.log(result);
 
       //this result will be posted to the backend to process the payment
-      const response = axios.post("https://unified-checkout-backend.vercel.app/payment-session", result);
+      const response = await axios.post("https://unified-checkout-backend.vercel.app/payment-session", result);
 
+      console.log("Payment processing response:", response.data);
 
-      alert("Payment information collected successfully.");
+      if (response.data?.status === "AUTHORIZED" || response.data?.status === "PENDING") {
+        alert(`Payment ${response.data.status.toLowerCase()} successfully.`);
+      } else {
+        alert("Payment information collected successfully.");
+      }
     }
 
     return result;

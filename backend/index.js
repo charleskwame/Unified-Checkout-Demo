@@ -1,8 +1,8 @@
 const express = require("express");
 const cors = require("cors");
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { createHeaders } = require("cybersource-auth");
-const axios = require("axios")
 
 const app = express();
 
@@ -180,16 +180,143 @@ function extractCaptureContext(response, data, responseText) {
 }
 
 const processPaymentWithToken = async (req, res) => {
-  return req;
   try {
-    const response = axios.post("https://apitest.cybersource.com/pts/v2/payments", req.body)
-    return;
+    if (!HOST || !MERCHANT_ID || !API_KEY_ID || !SHARED_SECRET) {
+      return res.status(500).json({
+        error: "CyberSource environment variables are not fully configured.",
+      });
+    }
+
+    const paymentResult = req.body;
+
+    if (!paymentResult || typeof paymentResult !== "object") {
+      return res.status(400).json({
+        error: "Invalid payment result. Expected a payment result object.",
+      });
+    }
+
+    const transientToken = extractTransientToken(paymentResult);
+
+    if (!transientToken) {
+      return res.status(400).json({
+        error: "No transient token found in the payment result.",
+        receivedKeys: Object.keys(paymentResult),
+      });
+    }
+
+    const paymentPayload = buildPaymentPayload(paymentResult, transientToken);
+
+    const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    const paymentResourcePath = "/pts/v2/payments";
+    const url = `https://${normalizedHost}${paymentResourcePath}`;
+
+    const rawBody = JSON.stringify(paymentPayload);
+
+    const headers = createHeaders(
+      MERCHANT_ID,
+      normalizedHost,
+      "post",
+      paymentResourcePath,
+      rawBody,
+      API_KEY_ID,
+      SHARED_SECRET
+    );
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: headers,
+      body: rawBody,
+      signal: AbortSignal.timeout(15000),
+    });
+
+    const responseText = await response.text();
+    const data = safeParseJson(responseText);
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: data.message || `CyberSource payment request failed (${response.status})`,
+        details: data.details || data,
+      });
+    }
+
+    return res.json(data);
   } catch (error) {
-    console.log(error)
+    console.error("Payment processing error:", error);
+    res.status(500).json({ error: error.message });
   }
+};
+
+function extractTransientToken(paymentResult) {
+  const candidates = [
+    paymentResult.transientToken,
+    paymentResult.token,
+    paymentResult.id,
+    paymentResult.paymentInformation?.token?.id,
+    paymentResult.paymentInformation?.token,
+    paymentResult.data?.transientToken,
+    paymentResult.data?.token,
+    paymentResult.data?.id,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+  }
+
+  return null;
+}
+
+function buildPaymentPayload(paymentResult, transientToken) {
+  const orderInfo =
+    paymentResult.data?.orderInformation ||
+    paymentResult.orderInformation ||
+    paymentResult.orderInformationData || {};
+
+  const amountDetails = orderInfo.amountDetails || {};
+
+  const payload = {
+    clientReferenceInformation: {
+      code: `UC-${Date.now()}`,
+    },
+    processingInformation: {
+      actionList: ["TOKEN_CREATE"],
+      actionTokenTypes: ["customer"],
+    },
+    paymentInformation: {
+      token: {
+        id: transientToken,
+      },
+    },
+    orderInformation: {
+      amountDetails: {
+        totalAmount: amountDetails.totalAmount || "0.00",
+        currency: amountDetails.currency || "USD",
+      },
+    },
+  };
+
+  if (orderInfo.billTo && typeof orderInfo.billTo === "object") {
+    payload.orderInformation.billTo = orderInfo.billTo;
+  }
+
+  if (paymentResult.billTo && typeof paymentResult.billTo === "object") {
+    payload.orderInformation.billTo = paymentResult.billTo;
+  }
+
+  return payload;
 }
 
 app.post("/checkout-session", createCheckoutSession);
 
 app.post("/payment-session", processPaymentWithToken);
+
+// Start the server locally; Vercel handles this automatically in production.
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Backend server running on http://localhost:${PORT}`);
+  });
+}
+
 module.exports = app;
