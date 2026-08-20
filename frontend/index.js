@@ -35,7 +35,7 @@ const paymentPayload = {
   data: {
     orderInformation: {
       amountDetails: {
-        totalAmount: "21.00",
+        totalAmount: "300.00",
         currency: "USD",
       },
     },
@@ -127,7 +127,7 @@ const startWithVAS = async (captureContext) => {
 
       //this result will be posted to the backend to process the payment
 
-      
+
       alert("Payment information collected successfully.");
     }
 
@@ -152,7 +152,10 @@ const startWithVAS = async (captureContext) => {
   }
 }
 
-const getSessionContext = async(event) => {
+const getSessionContext = async (event) => {
+  let isProcessing = true;
+  proceedToPaymentButton.innerHTML = `${isProcessing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}`
+  proceedToPaymentButton.setAttribute("disabled", isProcessing)
   event.preventDefault();  
   try {
     const response = await axios.post("https://unified-checkout-backend.vercel.app/checkout-session", paymentPayload);
@@ -186,8 +189,6 @@ const getSessionContext = async(event) => {
     await loadCyberSourceSdk(clientLibrary, integrity);
 
     if (window.VAS && typeof window.VAS.UnifiedCheckout === "function") {
-      console.log("Detected newer CyberSource Unified Checkout API.");
-
       await startWithVAS(captureContext);
 
       return;
@@ -205,6 +206,9 @@ const getSessionContext = async(event) => {
 
     alert("Unable to initialize payment. " + "Please check the browser console for details.");
   }
+  isProcessing = false;
+  proceedToPaymentButton.innerHTML = `${isProcessing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}`;
+  proceedToPaymentButton.removeAttribute("disabled");
 }
 
 if (!proceedToPaymentButton) {
