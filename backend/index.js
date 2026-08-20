@@ -1,8 +1,9 @@
 const express = require("express");
-// const http = require("http");
 const cors = require("cors");
 require("dotenv").config();
 const { createHeaders } = require("cybersource-auth");
+
+const app = express();
 
 app.use(
   cors({
@@ -12,28 +13,13 @@ app.use(
   })
 );
 
+app.use(express.json());
+
 const HOST = process.env.CYBERSOURCE_HOST;
 const MERCHANT_ID = process.env.CYBERSOURCE_MERCHANT_ID;
 const API_KEY_ID = process.env.CYBERSOURCE_API_KEY_ID;
 const SHARED_SECRET = process.env.CYBERSOURCE_API_SECRET_KEY;
 const resourcePath = "/uc/v1/sessions";
-
-const app = express();
-
-const allowedOrigins = ["https://unified-checkout-frontend.vercel.app/"];
-
-// app.use(
-//   cors({
-//     origin: "https://unified-checkout-frontend.vercel.app",
-//   })
-// );
-
-
-
-app.use(express.json());
-
-// const PORT = process.env.PORT || 3000;
-// const server = http.createServer(app);
 
 const createCheckoutSession = async (req, res) => {
   try {
@@ -193,10 +179,6 @@ function extractCaptureContext(response, data, responseText) {
 
   return null;
 }
-
-// server.listen(PORT, () => {
-//   console.log(`Server is listening on port ${PORT}`);
-// });
 
 app.post("/checkout-session", createCheckoutSession);
 module.exports = app;
