@@ -259,26 +259,39 @@ const processPaymentWithToken = async (req, res) => {
   }
 };
 
+// function extractTransientToken(paymentResult) {
+//   const candidates = [
+//     paymentResult.transientToken,
+//     paymentResult.token,
+//     paymentResult.id,
+//     paymentResult.paymentInformation?.token?.id,
+//     paymentResult.paymentInformation?.token,
+//     paymentResult.data?.transientToken,
+//     paymentResult.data?.token,
+//     paymentResult.data?.id,
+//   ];
+
+//   for (const candidate of candidates) {
+//     if (typeof candidate === "string" && candidate.trim().length > 0) {
+//       return candidate.trim();
+//     }
+//   }
+
+//   return null;
+// }
+
 function extractTransientToken(paymentResult) {
-  const candidates = [
-    paymentResult.transientToken,
-    paymentResult.token,
-    paymentResult.id,
-    paymentResult.paymentInformation?.token?.id,
-    paymentResult.paymentInformation?.token,
-    paymentResult.data?.transientToken,
-    paymentResult.data?.token,
-    paymentResult.data?.id,
-  ];
+  const candidates = [paymentResult.transientToken, paymentResult.data?.transientToken, paymentResult.token, paymentResult.data?.token];
 
   for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.trim().length > 0) {
+    if (typeof candidate === "string" && candidate.trim()) {
       return candidate.trim();
     }
   }
 
   return null;
 }
+
 
 // function buildPaymentPayload(paymentResult, transientToken) {
 //   const orderInfo =
@@ -318,6 +331,48 @@ function extractTransientToken(paymentResult) {
 //   }
 
 //   return payload;
+
+// }
+
+
+
+// function buildPaymentPayload(paymentResult, transientToken) {
+//   const orderInfo = paymentResult.data?.orderInformation || paymentResult.orderInformation || paymentResult.orderInformationData || {};
+
+//   const amountDetails = orderInfo.amountDetails || {};
+
+//   const payload = {
+//     clientReferenceInformation: {
+//       code: `UC-${Date.now()}`,
+//     },
+//     // Fix: Pass transientToken directly in paymentInformation
+//     paymentInformation: {
+//       transientToken: {
+//         id: transientToken,
+//       },
+//     },
+//     orderInformation: {
+//       amountDetails: {
+//         totalAmount: amountDetails.totalAmount || "0.00",
+//         currency: amountDetails.currency || "USD",
+//       },
+//     },
+//   };
+
+//   // Keep customer token creation only if specifically intended
+//   if (paymentResult.actionList) {
+//     payload.processingInformation = {
+//       actionList: paymentResult.actionList,
+//     };
+//   }
+
+//   if (orderInfo.billTo && typeof orderInfo.billTo === "object") {
+//     payload.orderInformation.billTo = orderInfo.billTo;
+//   } else if (paymentResult.billTo && typeof paymentResult.billTo === "object") {
+//     payload.orderInformation.billTo = paymentResult.billTo;
+//   }
+
+//   return payload;
 // }
 
 function buildPaymentPayload(paymentResult, transientToken) {
@@ -329,12 +384,15 @@ function buildPaymentPayload(paymentResult, transientToken) {
     clientReferenceInformation: {
       code: `UC-${Date.now()}`,
     },
-    // Fix: Pass transientToken directly in paymentInformation
-    paymentInformation: {
-      transientToken: {
-        id: transientToken,
-      },
+
+    processingInformation: {
+      commerceIndicator: "internet",
     },
+
+    tokenInformation: {
+      transientTokenJwt: transientToken,
+    },
+
     orderInformation: {
       amountDetails: {
         totalAmount: amountDetails.totalAmount || "0.00",
@@ -343,16 +401,11 @@ function buildPaymentPayload(paymentResult, transientToken) {
     },
   };
 
-  // Keep customer token creation only if specifically intended
-  if (paymentResult.actionList) {
-    payload.processingInformation = {
-      actionList: paymentResult.actionList,
-    };
-  }
-
   if (orderInfo.billTo && typeof orderInfo.billTo === "object") {
     payload.orderInformation.billTo = orderInfo.billTo;
-  } else if (paymentResult.billTo && typeof paymentResult.billTo === "object") {
+  }
+
+  if (paymentResult.billTo && typeof paymentResult.billTo === "object") {
     payload.orderInformation.billTo = paymentResult.billTo;
   }
 
