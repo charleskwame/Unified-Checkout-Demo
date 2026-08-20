@@ -180,10 +180,10 @@ function extractCaptureContext(response, data, responseText) {
 }
 
 const processPaymentWithToken = async (req, res) => {
-  console.log(request)
+  return req;
   try {
     const response = axios.post("https://apitest.cybersource.com/pts/v2/payments", req.body)
-    return
+    return;
   } catch (error) {
     console.log(error)
   }
