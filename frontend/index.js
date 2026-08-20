@@ -297,7 +297,7 @@ async function getSessionContext(event) {
     // 1. Get capture context from backend
     // ------------------------------------------------
 
-    const response = await axios.post("https://unified-checkout-backend-oscq4vzbw-charleskwames-projects.vercel.app", paymentPayload);
+    const response = await axios.post("https://unified-checkout-backend-oscq4vzbw-charleskwames-projects.vercel.app/checkout-session", paymentPayload);
 
     console.log("Backend response:", response.data);
 
