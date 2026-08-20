@@ -188,6 +188,9 @@ const processPaymentWithToken = async (req, res) => {
     }
 
     const paymentResult = req.body;
+    return res.json({
+     paymentResult
+    })
 
     if (!paymentResult) {
       return res.status(400).json({
@@ -197,8 +200,6 @@ const processPaymentWithToken = async (req, res) => {
 
     let transientToken;
     let paymentResultData = {};
-
-    // Handle case where the transient token is sent directly as a string
     if (typeof paymentResult === "string") {
       transientToken = paymentResult.trim();
     } else if (typeof paymentResult === "object") {
@@ -259,26 +260,6 @@ const processPaymentWithToken = async (req, res) => {
   }
 };
 
-// function extractTransientToken(paymentResult) {
-//   const candidates = [
-//     paymentResult.transientToken,
-//     paymentResult.token,
-//     paymentResult.id,
-//     paymentResult.paymentInformation?.token?.id,
-//     paymentResult.paymentInformation?.token,
-//     paymentResult.data?.transientToken,
-//     paymentResult.data?.token,
-//     paymentResult.data?.id,
-//   ];
-
-//   for (const candidate of candidates) {
-//     if (typeof candidate === "string" && candidate.trim().length > 0) {
-//       return candidate.trim();
-//     }
-//   }
-
-//   return null;
-// }
 
 function extractTransientToken(paymentResult) {
   const candidates = [paymentResult.transientToken, paymentResult.data?.transientToken, paymentResult.token, paymentResult.data?.token];
@@ -292,88 +273,6 @@ function extractTransientToken(paymentResult) {
   return null;
 }
 
-
-// function buildPaymentPayload(paymentResult, transientToken) {
-//   const orderInfo =
-//     paymentResult.data?.orderInformation ||
-//     paymentResult.orderInformation ||
-//     paymentResult.orderInformationData || {};
-
-//   const amountDetails = orderInfo.amountDetails || {};
-
-//   const payload = {
-//     clientReferenceInformation: {
-//       code: `UC-${Date.now()}`,
-//     },
-//     processingInformation: {
-//       actionList: ["TOKEN_CREATE"],
-//       actionTokenTypes: ["customer"],
-//     },
-//     paymentInformation: {
-//       token: {
-//         id: transientToken,
-//       },
-//     },
-//     orderInformation: {
-//       amountDetails: {
-//         totalAmount: amountDetails.totalAmount || "0.00",
-//         currency: amountDetails.currency || "USD",
-//       },
-//     },
-//   };
-
-//   if (orderInfo.billTo && typeof orderInfo.billTo === "object") {
-//     payload.orderInformation.billTo = orderInfo.billTo;
-//   }
-
-//   if (paymentResult.billTo && typeof paymentResult.billTo === "object") {
-//     payload.orderInformation.billTo = paymentResult.billTo;
-//   }
-
-//   return payload;
-
-// }
-
-
-
-// function buildPaymentPayload(paymentResult, transientToken) {
-//   const orderInfo = paymentResult.data?.orderInformation || paymentResult.orderInformation || paymentResult.orderInformationData || {};
-
-//   const amountDetails = orderInfo.amountDetails || {};
-
-//   const payload = {
-//     clientReferenceInformation: {
-//       code: `UC-${Date.now()}`,
-//     },
-//     // Fix: Pass transientToken directly in paymentInformation
-//     paymentInformation: {
-//       transientToken: {
-//         id: transientToken,
-//       },
-//     },
-//     orderInformation: {
-//       amountDetails: {
-//         totalAmount: amountDetails.totalAmount || "0.00",
-//         currency: amountDetails.currency || "USD",
-//       },
-//     },
-//   };
-
-//   // Keep customer token creation only if specifically intended
-//   if (paymentResult.actionList) {
-//     payload.processingInformation = {
-//       actionList: paymentResult.actionList,
-//     };
-//   }
-
-//   if (orderInfo.billTo && typeof orderInfo.billTo === "object") {
-//     payload.orderInformation.billTo = orderInfo.billTo;
-//   } else if (paymentResult.billTo && typeof paymentResult.billTo === "object") {
-//     payload.orderInformation.billTo = paymentResult.billTo;
-//   }
-
-//   return payload;
-// }
 
 function buildPaymentPayload(paymentResult, transientToken) {
   const orderInfo = paymentResult.data?.orderInformation || paymentResult.orderInformation || paymentResult.orderInformationData || {};
@@ -416,7 +315,6 @@ app.post("/checkout-session", createCheckoutSession);
 
 app.post("/payment-session", processPaymentWithToken);
 
-// Start the server locally; Vercel handles this automatically in production.
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
