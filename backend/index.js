@@ -188,9 +188,9 @@ const processPaymentWithToken = async (req, res) => {
     }
 
     const paymentResult = req.body;
-    return res.status(200).json({
-     paymentResult
-    })
+    // return res.status(200).json({
+    //   paymentResult,
+    // })
 
     if (!paymentResult) {
       return res.status(400).json({
@@ -205,6 +205,9 @@ const processPaymentWithToken = async (req, res) => {
     } else if (typeof paymentResult === "object") {
       paymentResultData = paymentResult;
       transientToken = extractTransientToken(paymentResult);
+      return res.status(200).json({
+        transientToken
+      })
     } else {
       return res.status(400).json({
         error: "Invalid payment result. Expected a payment result object or transient token string.",

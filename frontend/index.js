@@ -131,7 +131,7 @@ const startWithVAS = async (captureContext) => {
         transientToken: result,
       });
 
-      console.log("Payment processing response:", response);
+      console.log("Payment processing response:", response.data);
 
       if (response.data?.status === "AUTHORIZED" || response.data?.status === "PENDING") {
         alert(`Payment ${response.data.status.toLowerCase()} successfully.`);
