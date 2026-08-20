@@ -1,7 +1,9 @@
+// index.js
+
 const proceedToPaymentButton = document.getElementById("proceedToPayment");
 
 const paymentPayload = {
-  targetOrigins: ["https://unified-checkout-frontend.vercel.app/"],
+  targetOrigins: ["https://54b2-154-162-5-218.ngrok-free.app"],
 
   clientVersion: "1.0",
 
@@ -43,9 +45,7 @@ const paymentPayload = {
 };
 
 // --------------------------------------------------
-
 // Decode JWT payload
-
 // --------------------------------------------------
 
 function decodeJwtPayload(jwt) {
@@ -162,25 +162,42 @@ async function startWithVAS(captureContext) {
     console.log("Unified Checkout completed:", result);
 
     /*
-     * `result` is the completed payment result /
-     * transient token depending on the configured flow.
-     *
-     * Send this value to your backend.
-     */
+    
+    
+    * `result` is the completed payment result
+    
+    
+    * transient token depending on the configured flow.
+    
+    *
+    
+    * Send this value to your backend.
+    
+    */
 
     if (result) {
       console.log("Payment result received:", result);
 
       /*
-       * Example:
-       *
-       * await axios.post(
-       *   "https://your-backend.com/payment",
-       *   {
-       *     transientToken: result
-       *   }
-       * );
-       */
+
+      
+      * Example:
+      
+      *
+      
+      * await axios.post(
+      
+      *   "https://your-backend.com/payment",
+      
+      *   {
+      
+      *     transientToken: result
+      
+      *   }
+      
+      * );
+      
+      */
 
       alert("Payment information collected successfully.");
     }
@@ -191,7 +208,8 @@ async function startWithVAS(captureContext) {
 
     throw error;
   } finally {
-    // Clean up checkout
+    // Clean
+    // up checkout
     if (checkout) {
       try {
         checkout.destroy();
@@ -212,7 +230,9 @@ async function startWithVAS(captureContext) {
 }
 
 // --------------------------------------------------
+
 // Start payment using older Accept API
+
 // --------------------------------------------------
 
 async function startWithAccept(captureContext) {
@@ -226,18 +246,24 @@ async function startWithAccept(captureContext) {
     }
 
     /*
-     * CyberSource documents this as:
-     *
-     * const accept = await Accept(captureContext);
-     */
+
+    * CyberSource documents this as:
+
+    *
+
+    * const accept = await Accept(captureContext);
+
+    */
 
     accept = await window.Accept(captureContext);
 
     console.log("Accept initialized:", accept);
 
     /*
-     * false = embedded checkout
-     */
+    
+    * false = embedded checkout
+    
+    */
     const unifiedPayments = await accept.unifiedPayments(false);
 
     console.log("Unified Payments initialized:", unifiedPayments);
@@ -297,7 +323,7 @@ async function getSessionContext(event) {
     // 1. Get capture context from backend
     // ------------------------------------------------
 
-    const response = await axios.post("unified-checkout-backend-oscq4vzbw-charleskwames-projects.vercel.app", paymentPayload);
+    const response = await axios.post("https://unified-checkout-demo.onrender.com/checkout-session", paymentPayload);
 
     console.log("Backend response:", response.data);
 
