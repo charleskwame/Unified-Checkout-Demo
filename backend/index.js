@@ -189,22 +189,35 @@ const processPaymentWithToken = async (req, res) => {
 
     const paymentResult = req.body;
 
-    if (!paymentResult || typeof paymentResult !== "object") {
+    if (!paymentResult) {
       return res.status(400).json({
-        error: "Invalid payment result. Expected a payment result object.",
+        error: "Invalid payment result. Expected a payment result object or transient token string.",
       });
     }
 
-    const transientToken = extractTransientToken(paymentResult);
+    let transientToken;
+    let paymentResultData = {};
+
+    // Handle case where the transient token is sent directly as a string
+    if (typeof paymentResult === "string") {
+      transientToken = paymentResult.trim();
+    } else if (typeof paymentResult === "object") {
+      paymentResultData = paymentResult;
+      transientToken = extractTransientToken(paymentResult);
+    } else {
+      return res.status(400).json({
+        error: "Invalid payment result. Expected a payment result object or transient token string.",
+      });
+    }
 
     if (!transientToken) {
       return res.status(400).json({
         error: "No transient token found in the payment result.",
-        receivedKeys: Object.keys(paymentResult),
+        receivedKeys: typeof paymentResult === "object" ? Object.keys(paymentResult) : undefined,
       });
     }
 
-    const paymentPayload = buildPaymentPayload(paymentResult, transientToken);
+    const paymentPayload = buildPaymentPayload(paymentResultData, transientToken);
 
     const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
     const paymentResourcePath = "/pts/v2/payments";

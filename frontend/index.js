@@ -127,7 +127,9 @@ const startWithVAS = async (captureContext) => {
       console.log(result);
 
       //this result will be posted to the backend to process the payment
-      const response = await axios.post("https://unified-checkout-backend.vercel.app/payment-session", result);
+      const response = await axios.post("https://unified-checkout-backend.vercel.app/payment-session", {
+        transientToken: result,
+      });
 
       console.log("Payment processing response:", response.data);
 
