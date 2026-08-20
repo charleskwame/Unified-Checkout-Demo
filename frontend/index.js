@@ -126,6 +126,8 @@ const startWithVAS = async (captureContext) => {
 
 
       //this result will be posted to the backend to process the payment
+      const response = axios.post("https://unified-checkout-backend.vercel.app/payment-session", result);
+
 
 
       alert("Payment information collected successfully.");

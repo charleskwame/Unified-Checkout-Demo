@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const { createHeaders } = require("cybersource-auth");
+const axios = require("axios")
 
 const app = express();
 
@@ -178,5 +179,17 @@ function extractCaptureContext(response, data, responseText) {
   return null;
 }
 
+const processPaymentWithToken = async (req, res) => {
+  console.log(request)
+  try {
+    const response = axios.post("https://apitest.cybersource.com/pts/v2/payments", req.body)
+    return
+  } catch (error) {
+    console.log(error)
+  }
+}
+
 app.post("/checkout-session", createCheckoutSession);
+
+app.post("/payment-session", processPaymentWithToken);
 module.exports = app;
