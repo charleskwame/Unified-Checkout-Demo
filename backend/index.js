@@ -1,5 +1,5 @@
 const express = require("express");
-const http = require("http");
+// const http = require("http");
 const cors = require("cors");
 require("dotenv").config();
 const { createHeaders } = require("cybersource-auth");
@@ -11,18 +11,27 @@ const SHARED_SECRET = process.env.CYBERSOURCE_API_SECRET_KEY;
 const resourcePath = "/uc/v1/sessions";
 
 const app = express();
-app.use(express.json());
 
 const allowedOrigins = ["https://unified-checkout-frontend.vercel.app/"];
+
+// app.use(
+//   cors({
+//     origin: "https://unified-checkout-frontend.vercel.app",
+//   })
+// );
 
 app.use(
   cors({
     origin: "https://unified-checkout-frontend.vercel.app",
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
+app.use(express.json());
+
 const PORT = process.env.PORT || 3000;
-const server = http.createServer(app);
+// const server = http.createServer(app);
 
 const createCheckoutSession = async (req, res) => {
   try {
@@ -134,7 +143,6 @@ function validateCheckoutPayload(payload) {
   return errors;
 }
 
-app.post("/checkout-session", createCheckoutSession);
 
 function normalizeCheckoutPayload(rawPayload) {
   const payload = rawPayload && typeof rawPayload === "object" ? { ...rawPayload } : {};
@@ -184,6 +192,9 @@ function extractCaptureContext(response, data, responseText) {
   return null;
 }
 
-server.listen(PORT, () => {
-  console.log(`Server is listening on port ${PORT}`);
-});
+// server.listen(PORT, () => {
+//   console.log(`Server is listening on port ${PORT}`);
+// });
+
+app.post("/checkout-session", createCheckoutSession);
+module.exports = app;
