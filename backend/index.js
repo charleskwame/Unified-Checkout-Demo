@@ -4,6 +4,14 @@ const cors = require("cors");
 require("dotenv").config();
 const { createHeaders } = require("cybersource-auth");
 
+app.use(
+  cors({
+    origin: "https://unified-checkout-frontend.vercel.app",
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 const HOST = process.env.CYBERSOURCE_HOST;
 const MERCHANT_ID = process.env.CYBERSOURCE_MERCHANT_ID;
 const API_KEY_ID = process.env.CYBERSOURCE_API_KEY_ID;
@@ -20,17 +28,11 @@ const allowedOrigins = ["https://unified-checkout-frontend.vercel.app/"];
 //   })
 // );
 
-app.use(
-  cors({
-    origin: "https://unified-checkout-frontend.vercel.app",
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+
 
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+// const PORT = process.env.PORT || 3000;
 // const server = http.createServer(app);
 
 const createCheckoutSession = async (req, res) => {
