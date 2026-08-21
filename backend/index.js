@@ -3,7 +3,7 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { createHeaders } = require("cybersource-auth");
-const {decodeJwt} = require("jose")
+const {decodeJwt, jwtVerify} = require("jose")
 
 const app = express();
 
@@ -184,7 +184,17 @@ function extractCaptureContext(response, data, responseText) {
 const verifyPaymentResult = async (req, res) => {
   const decodedPaymentResultJWT = decodeJwt(req.body)
 
-  return res.status(200).json({decodedPaymentResultJWT})
+  const verifiedJWT = jwtVerify(decodedPaymentResultJWT)
+
+  if (verifiedJWT) {
+    
+    return res.status(200).json({decodedPaymentResultJWT})
+  }
+
+  return res.status(404).json({
+    error: "jwt not verified"
+  })
+
 }
 app.post("/checkout-session", createCheckoutSession);
 app.post("/verify-payment", verifyPaymentResult)
