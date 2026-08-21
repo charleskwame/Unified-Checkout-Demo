@@ -138,10 +138,10 @@ const startWithVAS = async (captureContext) => {
         completeResponse: result,
       });
 
-      console.log("The verification response object is: " + response)
       if (response.data?.decoded?.status === 'AUTHORIZED') {
-        alert("Your payment was successful: your payment id is:" + response.message)
+        alert("Your payment was successful: your payment id is:" + response.data.decoded.id)
       }
+      console.log("The verification response object is: " + response.data.decoded)
     }
 
     throw new Error("Unified Checkout returned no payment result.");
