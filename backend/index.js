@@ -3,6 +3,7 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { createHeaders } = require("cybersource-auth");
+const jwt = require("jsonwebtoken")
 
 const app = express();
 
@@ -179,9 +180,46 @@ function extractCaptureContext(response, data, responseText) {
   return null;
 }
 
+
+const verifyPaymentResult = async (req, res) => {
+  try {
+    const { completeResponse } = req.body;
+
+    if (!completeResponse || typeof completeResponse !== "string") {
+      return res.status(400).json({
+        error: "completeResponse JWT is required",
+      });
+    }
+
+    const decoded = jwt.decode(completeResponse, {
+      complete: true,
+    });
+
+    if (!decoded) {
+      return res.status(400).json({
+        error: "Unable to decode JWT",
+      });
+    }
+
+    console.log("JWT header:", decoded.header);
+    console.log("JWT payload:", decoded.payload);
+
+    return res.status(200).json({
+      success: true,
+      payment: decoded.payload,
+    });
+  } catch (error) {
+    console.error("Payment JWT decoding failed:", error);
+
+    return res.status(400).json({
+      error: "Invalid payment result JWT",
+    });
+  }
+};
+
 app.post("/checkout-session", createCheckoutSession);
 
-// app.post("/payment-session", processPaymentWithToken);
+app.post("/verify-payment", verifyPaymentResult);
 
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 3000;
