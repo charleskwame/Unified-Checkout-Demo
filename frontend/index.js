@@ -144,7 +144,7 @@ const startWithVAS = async (captureContext) => {
       console.log(response.data.decoded)
     }
 
-    throw new Error("Unified Checkout returned no payment result.");
+    // throw new Error("Unified Checkout returned no payment result.");
   } catch (error) {
     console.error("Unified Checkout payment failed:", error);
 
