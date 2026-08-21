@@ -139,7 +139,7 @@ const startWithVAS = async (captureContext) => {
       });
 
       console.log("The verification response object is: " + response)
-      if (response.status === 'AUTHORIZED') {
+      if (response.data?.decoded?.status === 'AUTHORIZED') {
         alert("Your payment was successful: your payment id is:" + response.message)
       }
     }
