@@ -257,7 +257,6 @@ const processPaymentWithToken = async (req, res) => {
       });
     }
 
-    console.log("Payment response:", JSON.stringify(data, null, 2));
     return res.json(data);
   } catch (error) {
     console.error("Payment processing error:", error);
