@@ -130,7 +130,7 @@ const startWithVAS = async (captureContext) => {
       const response = await axios.post("https://unified-checkout-backend.vercel.app/verify-payment", { completeResponse: result });
 
       if (response.data?.decoded?.status === "AUTHORIZED") {
-        alert("Your payment was successful: your payment id is:" + response.data.decoded.id);
+        alert("Your payment was successful. Your payment id is: " + response.data.decoded.id + " This is a test transaction. Thank you");
       }
     } else {
       throw new Error("Unified Checkout returned no payment result.");
