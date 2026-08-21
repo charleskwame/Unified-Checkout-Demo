@@ -133,7 +133,7 @@ const startWithVAS = async (captureContext) => {
 
       console.log("Payment processing response:", response.data);
 
-      if (response.data?.status === "AUTHORIZED" || response.data?.status === "PENDING") {
+      if (response.data?.status === "AUTHORIZED" || response.data?.status === "PAYMENT_AUTHORIZED") {
         alert(`Payment ${response.data.status.toLowerCase()} successfully.`);
       } else {
         alert("Payment information collected successfully.");
