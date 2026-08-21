@@ -138,7 +138,7 @@ const startWithVAS = async (captureContext) => {
         completeResponse: result,
       });
 
-      console.log(response)
+      console.log("The verification response object is: " + response)
       if (response.status === 'AUTHORIZED') {
         alert("Your payment was successful: your payment id is:" + response.message)
       }
