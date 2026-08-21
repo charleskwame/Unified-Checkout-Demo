@@ -54,13 +54,13 @@ app.use(express.json());
 
 const createCheckoutSession = async (req, res) => {
   try {
-    if (!HOST || !MERCHANT_ID || !API_KEY_ID || !SHARED_SECRET) {
+    if (!config.host || !config.merchantId || !config.apiKeyId || !config.sharedSecret) {
       return res.status(500).json({
         error: "CyberSource environment variables are not fully configured.",
       });
     }
 
-    const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    const normalizedHost = config.host.replace(/^https?:\/\//, "").replace(/\/+$/, "");
     // const url = `https://${normalizedHost}${resourcePath}`;
     const url = `https://${normalizedHost}${config.resourcePath}`;
 
