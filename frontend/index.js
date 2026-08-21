@@ -32,6 +32,10 @@ const paymentPayload = {
   country: "US",
   locale: "en_US",
 
+  completeMandate: {
+    type: "CAPTURE",
+  },
+
   data: {
     orderInformation: {
       amountDetails: {
@@ -114,7 +118,7 @@ const startWithVAS = async (captureContext) => {
   try {
     client = await window.VAS.UnifiedCheckout(captureContext);
     checkout = await client.createCheckout({
-      autoProcessing: false,
+      autoProcessing: true,
     });
 
     const result = await checkout.mount({
@@ -123,15 +127,9 @@ const startWithVAS = async (captureContext) => {
     });
 
     if (result) {
+      
 
       console.log(result);
-
-      //this result will be posted to the backend to process the payment
-      const response = await axios.post("https://unified-checkout-backend.vercel.app/payment-session", {
-        transientToken: result,
-      });
-
-      console.log("Payment processing response:", response.data);
 
       if (response.data?.status === "AUTHORIZED" || response.data?.status === "PAYMENT_AUTHORIZED") {
         alert(`Payment ${response.data.status.toLowerCase()} successfully.`);
