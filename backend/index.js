@@ -220,44 +220,44 @@ const processPaymentWithToken = async (req, res) => {
 
     const paymentPayload = buildPaymentPayload(paymentResultData, transientToken);
 
-    // return res.status(200).json({
-    //   payloadLog: paymentPayload
-    // })
+    return res.status(200).json({
+      paymentPayloadLog : paymentPayload
+    })
 
-    const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-    const paymentResourcePath = "/pts/v2/payments";
-    const url = `https://${normalizedHost}${paymentResourcePath}`;
+    // const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    // const paymentResourcePath = "/pts/v2/payments";
+    // const url = `https://${normalizedHost}${paymentResourcePath}`;
 
-    const rawBody = JSON.stringify(paymentPayload);
+    // const rawBody = JSON.stringify(paymentPayload);
 
-    const headers = createHeaders(
-      MERCHANT_ID,
-      normalizedHost,
-      "post",
-      paymentResourcePath,
-      rawBody,
-      API_KEY_ID,
-      SHARED_SECRET
-    );
+    // const headers = createHeaders(
+    //   MERCHANT_ID,
+    //   normalizedHost,
+    //   "post",
+    //   paymentResourcePath,
+    //   rawBody,
+    //   API_KEY_ID,
+    //   SHARED_SECRET
+    // );
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: headers,
-      body: rawBody,
-      signal: AbortSignal.timeout(15000),
-    });
+    // const response = await fetch(url, {
+    //   method: "POST",
+    //   headers: headers,
+    //   body: rawBody,
+    //   signal: AbortSignal.timeout(15000),
+    // });
 
-    const responseText = await response.text();
-    const data = safeParseJson(responseText);
+    // const responseText = await response.text();
+    // const data = safeParseJson(responseText);
 
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: data.message || `CyberSource payment request failed (${response.status})`,
-        details: data.details || data,
-      });
-    }
+    // if (!response.ok) {
+    //   return res.status(response.status).json({
+    //     error: data.message || `CyberSource payment request failed (${response.status})`,
+    //     details: data.details || data,
+    //   });
+    // }
 
-    return res.json(data);
+    // return res.json(data);
   } catch (error) {
     console.error("Payment processing error:", error);
     res.status(500).json({ error: error.message });
