@@ -117,6 +117,8 @@ const startWithVAS = async (captureContext) => {
 
   try {
     client = await window.VAS.UnifiedCheckout(captureContext);
+
+    // Complete Mandate + automatic processing
     checkout = await client.createCheckout({
       autoProcessing: true,
     });
@@ -126,20 +128,40 @@ const startWithVAS = async (captureContext) => {
       paymentScreen: "#embeddedPaymentContainer",
     });
 
+    console.log("Unified Checkout complete result:", result);
+
     if (result) {
-      
+      // IMPORTANT:
+      // result is the completed transaction result JWT.
+      // You should send this result to your backend for verification
+      // / order fulfillment, NOT the card/payment data.
 
-      console.log(result);
+      console.log("Payment completed:", result);
 
-      if (response.data?.status === "AUTHORIZED" || response.data?.status === "PAYMENT_AUTHORIZED") {
-        alert(`Payment ${response.data.status.toLowerCase()} successfully.`);
-      } else {
-        alert("Payment information collected successfully.");
-      }
+      // Example:
+      //
+      // const response = await axios.post(
+      //   "https://unified-checkout-backend.vercel.app/verify-payment",
+      //   {
+      //     completeResponse: result
+      //   }
+      // );
+
+      return result;
     }
 
-    return result;
+    throw new Error("Unified Checkout returned no payment result.");
   } catch (error) {
+    console.error("Unified Checkout payment failed:", error);
+
+    if (error?.name === "UnifiedCheckoutError") {
+      console.error("CyberSource error:", {
+        reason: error.reason,
+        message: error.message,
+        code: error.code,
+      });
+    }
+
     throw error;
   } finally {
     if (checkout) {
@@ -149,6 +171,7 @@ const startWithVAS = async (captureContext) => {
         console.warn("Could not destroy checkout:", error);
       }
     }
+
     if (client) {
       try {
         client.destroy();
@@ -157,7 +180,7 @@ const startWithVAS = async (captureContext) => {
       }
     }
   }
-}
+};
 
 const getSessionContext = async (event) => {
   let isProcessing = true;
