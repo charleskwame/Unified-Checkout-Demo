@@ -180,22 +180,35 @@ function extractCaptureContext(response, data, responseText) {
   return null;
 }
 
-
 const verifyPaymentResult = async (req, res) => {
-  const decodedPaymentResultJWT = decodeJwt(req.body)
+  try {
+    const { result } = req.body;
 
-  const verifiedJWT = jwtVerify(decodedPaymentResultJWT)
+    if (!result || typeof result !== "string") {
+      return res.status(400).json({
+        error: "Payment result JWT is required",
+      });
+    }
 
-  if (verifiedJWT) {
-    
-    return res.status(200).json({decodedPaymentResultJWT})
+    const { payload, protectedHeader } = await jwtVerify(result, YOUR_CYBERSOURCE_PUBLIC_KEY);
+
+    console.log("Verified JWT:", payload);
+    console.log("Header:", protectedHeader);
+
+    return res.status(200).json({
+      success: true,
+      payment: payload,
+    });
+  } catch (error) {
+    console.error("JWT verification failed:", error);
+
+    return res.status(401).json({
+      error: "JWT verification failed",
+    });
   }
+};
 
-  return res.status(404).json({
-    error: "jwt not verified"
-  })
 
-}
 app.post("/checkout-session", createCheckoutSession);
 app.post("/verify-payment", verifyPaymentResult)
 
