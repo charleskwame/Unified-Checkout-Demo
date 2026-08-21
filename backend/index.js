@@ -226,7 +226,7 @@ const verifyPaymentResult = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      payment: decoded,
+      decoded,
     });
   } catch (error) {
     console.error("Payment result error:", error);
