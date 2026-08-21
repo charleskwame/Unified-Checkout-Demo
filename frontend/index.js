@@ -131,9 +131,6 @@ const startWithVAS = async (captureContext) => {
     console.log("Unified Checkout complete result:", result);
 
     if (result) {
-    
-          //  console.log("Payment completed:", result);
-
       const response = await axios.post("https://unified-checkout-backend.vercel.app/verify-payment",{completeResponse: result});
 
       console.log(response)
