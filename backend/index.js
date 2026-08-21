@@ -107,7 +107,7 @@ const createCheckoutSession = async (req, res) => {
   }
 };
 
-function validateCheckoutPayload(payload) {
+const validateCheckoutPayload = (payload) => {
   const errors = [];
 
   if (!Array.isArray(payload.targetOrigins) || payload.targetOrigins.length === 0) {
@@ -155,7 +155,7 @@ function validateCheckoutPayload(payload) {
 }
 
 
-function normalizeCheckoutPayload(rawPayload) {
+const normalizeCheckoutPayload = (rawPayload) => {
   const payload = rawPayload && typeof rawPayload === "object" ? { ...rawPayload } : {};
 
   if (typeof payload.data !== "object" || payload.data === null) {
@@ -178,7 +178,7 @@ function safeParseJson(value) {
   }
 }
 
-function extractCaptureContext(response, data, responseText) {
+const extractCaptureContext = (response, data, responseText) => {
   const value =
     data.captureContext ||
     data.id ||
