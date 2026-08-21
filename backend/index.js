@@ -190,7 +190,7 @@ const verifyPaymentResult = async (req, res) => {
       });
     }
 
-    const { payload, protectedHeader } = await jwtVerify(result, YOUR_CYBERSOURCE_PUBLIC_KEY);
+    const { payload, protectedHeader } = await jwtVerify(result, SHARED_SECRET);
 
     console.log("Verified JWT:", payload);
     console.log("Header:", protectedHeader);
