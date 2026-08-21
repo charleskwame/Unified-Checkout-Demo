@@ -1,9 +1,15 @@
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
-require("dotenv").config({ path: path.join(__dirname, ".env") });
+// const path = require("path");
+// require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { createHeaders } = require("cybersource-auth");
-const jwt = require("jsonwebtoken")
+// const jwt = require("jsonwebtoken")
+const config = require("./config/env.js")
+const decodeJwtPayload = require("./utils/decodeJWT.js")
+const safeParseJson = require("./utils/parseJSON.js")
+const extractCaptureContext = require("./utils/extractCaptureContext.js")
+const normalizeCheckoutPayload = require("./utils/normalizeCheckoutPayload.js")
+const validateCheckoutPayload = require("./utils/validateCheckoutPayload.js")
 
 const app = express();
 
@@ -17,34 +23,34 @@ app.use(
 
 app.use(express.json());
 
-const HOST = process.env.CYBERSOURCE_HOST;
-const MERCHANT_ID = process.env.CYBERSOURCE_MERCHANT_ID;
-const API_KEY_ID = process.env.CYBERSOURCE_API_KEY_ID;
-const SHARED_SECRET = process.env.CYBERSOURCE_API_SECRET_KEY;
-const resourcePath = "/uc/v1/sessions";
+// const HOST = process.env.CYBERSOURCE_HOST;
+// const MERCHANT_ID = process.env.CYBERSOURCE_MERCHANT_ID;
+// const API_KEY_ID = process.env.CYBERSOURCE_API_KEY_ID;
+// const SHARED_SECRET = process.env.CYBERSOURCE_API_SECRET_KEY;
+// const resourcePath = "/uc/v1/sessions";
 
-const decodeJwtPayload = (token) => {
-  try {
-    if (!token || typeof token !== "string") {
-      throw new Error("JWT is empty or invalid.");
-    }
+// const decodeJwtPayload = (token) => {
+//   try {
+//     if (!token || typeof token !== "string") {
+//       throw new Error("JWT is empty or invalid.");
+//     }
 
-    const parts = token.split(".");
+//     const parts = token.split(".");
 
-    if (parts.length !== 3) {
-      throw new Error("Invalid JWT format.");
-    }
+//     if (parts.length !== 3) {
+//       throw new Error("Invalid JWT format.");
+//     }
 
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+//     const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
 
-    const json = Buffer.from(base64, "base64").toString("utf8");
+//     const json = Buffer.from(base64, "base64").toString("utf8");
 
-    return JSON.parse(json);
-  } catch (error) {
-    console.error("Failed to decode JWT:", error);
-    return null;
-  }
-};
+//     return JSON.parse(json);
+//   } catch (error) {
+//     console.error("Failed to decode JWT:", error);
+//     return null;
+//   }
+// };
 
 const createCheckoutSession = async (req, res) => {
   try {
@@ -55,7 +61,9 @@ const createCheckoutSession = async (req, res) => {
     }
 
     const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-    const url = `https://${normalizedHost}${resourcePath}`;
+    // const url = `https://${normalizedHost}${resourcePath}`;
+    const url = `https://${normalizedHost}${config.resourcePath}`;
+
 
     const rawPayload = req.body?.payload && typeof req.body.payload === "object" ? req.body.payload : req.body;
     const payload = normalizeCheckoutPayload(rawPayload);
@@ -71,7 +79,9 @@ const createCheckoutSession = async (req, res) => {
 
     const rawBody = JSON.stringify(payload);
 
-    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+    // const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+    const headers = createHeaders(config.merchantId, normalizedHost, "post", config.resourcePath, rawBody, config.apiKeyId, config.sharedSecret);
+
 
     const response = await fetch(url, {
       method: "POST",
@@ -107,101 +117,101 @@ const createCheckoutSession = async (req, res) => {
   }
 };
 
-const validateCheckoutPayload = (payload) => {
-  const errors = [];
+// const validateCheckoutPayload = (payload) => {
+//   const errors = [];
 
-  if (!Array.isArray(payload.targetOrigins) || payload.targetOrigins.length === 0) {
-    errors.push("targetOrigins must be a non-empty array.");
-  }
+//   if (!Array.isArray(payload.targetOrigins) || payload.targetOrigins.length === 0) {
+//     errors.push("targetOrigins must be a non-empty array.");
+//   }
 
-  if (typeof payload.clientVersion !== "string" || payload.clientVersion.trim().length === 0) {
-    errors.push("clientVersion is required.");
-  }
+//   if (typeof payload.clientVersion !== "string" || payload.clientVersion.trim().length === 0) {
+//     errors.push("clientVersion is required.");
+//   }
 
-  if (!Array.isArray(payload.allowedCardNetworks) || payload.allowedCardNetworks.length === 0) {
-    errors.push("allowedCardNetworks must be a non-empty array.");
-  }
+//   if (!Array.isArray(payload.allowedCardNetworks) || payload.allowedCardNetworks.length === 0) {
+//     errors.push("allowedCardNetworks must be a non-empty array.");
+//   }
 
-  if (!Array.isArray(payload.allowedPaymentTypes) || payload.allowedPaymentTypes.length === 0) {
-    errors.push("allowedPaymentTypes must be a non-empty array.");
-  }
+//   if (!Array.isArray(payload.allowedPaymentTypes) || payload.allowedPaymentTypes.length === 0) {
+//     errors.push("allowedPaymentTypes must be a non-empty array.");
+//   }
 
-  if (typeof payload.country !== "string" || payload.country.trim().length === 0) {
-    errors.push("country is required.");
-  }
+//   if (typeof payload.country !== "string" || payload.country.trim().length === 0) {
+//     errors.push("country is required.");
+//   }
 
-  if (typeof payload.locale !== "string" || payload.locale.trim().length === 0) {
-    errors.push("locale is required.");
-  }
+//   if (typeof payload.locale !== "string" || payload.locale.trim().length === 0) {
+//     errors.push("locale is required.");
+//   }
 
-  const orderInfo = payload.data?.orderInformation || payload.orderInformation;
+//   const orderInfo = payload.data?.orderInformation || payload.orderInformation;
 
-  if (typeof orderInfo !== "object" || orderInfo === null || typeof orderInfo.amountDetails !== "object" || orderInfo.amountDetails === null) {
-    errors.push("data.orderInformation.amountDetails is required.");
-    return errors;
-  }
+//   if (typeof orderInfo !== "object" || orderInfo === null || typeof orderInfo.amountDetails !== "object" || orderInfo.amountDetails === null) {
+//     errors.push("data.orderInformation.amountDetails is required.");
+//     return errors;
+//   }
 
-  const amountDetails = orderInfo.amountDetails;
+//   const amountDetails = orderInfo.amountDetails;
 
-  if (typeof amountDetails.totalAmount !== "string" || amountDetails.totalAmount.trim().length === 0) {
-    errors.push("data.orderInformation.amountDetails.totalAmount is required.");
-  }
+//   if (typeof amountDetails.totalAmount !== "string" || amountDetails.totalAmount.trim().length === 0) {
+//     errors.push("data.orderInformation.amountDetails.totalAmount is required.");
+//   }
 
-  if (typeof amountDetails.currency !== "string" || amountDetails.currency.trim().length === 0) {
-    errors.push("data.orderInformation.amountDetails.currency is required.");
-  }
+//   if (typeof amountDetails.currency !== "string" || amountDetails.currency.trim().length === 0) {
+//     errors.push("data.orderInformation.amountDetails.currency is required.");
+//   }
 
-  return errors;
-}
+//   return errors;
+// }
 
 
-const normalizeCheckoutPayload = (rawPayload) => {
-  const payload = rawPayload && typeof rawPayload === "object" ? { ...rawPayload } : {};
+// const normalizeCheckoutPayload = (rawPayload) => {
+//   const payload = rawPayload && typeof rawPayload === "object" ? { ...rawPayload } : {};
 
-  if (typeof payload.data !== "object" || payload.data === null) {
-    payload.data = {};
-  }
+//   if (typeof payload.data !== "object" || payload.data === null) {
+//     payload.data = {};
+//   }
 
-  if (payload.orderInformation && !payload.data.orderInformation) {
-    payload.data.orderInformation = payload.orderInformation;
-  }
+//   if (payload.orderInformation && !payload.data.orderInformation) {
+//     payload.data.orderInformation = payload.orderInformation;
+//   }
 
-  delete payload.orderInformation;
-  return payload;
-}
+//   delete payload.orderInformation;
+//   return payload;
+// }
 
-function safeParseJson(value) {
-  try {
-    return JSON.parse(value);
-  } catch {
-    return {};
-  }
-}
+// function safeParseJson(value) {
+//   try {
+//     return JSON.parse(value);
+//   } catch {
+//     return {};
+//   }
+// }
 
-const extractCaptureContext = (response, data, responseText) => {
-  const value =
-    data.captureContext ||
-    data.id ||
-    data.token ||
-    data.keyId ||
-    data.data?.captureContext ||
-    data.data?.id ||
-    data.data?.token ||
-    data.data?.keyId ||
-    response.headers.get("capture-context") ||
-    response.headers.get("v-c-capture-context") ||
-    response.headers.get("location");
+// const extractCaptureContext = (response, data, responseText) => {
+//   const value =
+//     data.captureContext ||
+//     data.id ||
+//     data.token ||
+//     data.keyId ||
+//     data.data?.captureContext ||
+//     data.data?.id ||
+//     data.data?.token ||
+//     data.data?.keyId ||
+//     response.headers.get("capture-context") ||
+//     response.headers.get("v-c-capture-context") ||
+//     response.headers.get("location");
 
-  if (typeof value === "string" && value.trim().length > 0) {
-    return value.trim();
-  }
+//   if (typeof value === "string" && value.trim().length > 0) {
+//     return value.trim();
+//   }
 
-  if (typeof responseText === "string" && responseText.trim().length > 0) {
-    return responseText.trim();
-  }
+//   if (typeof responseText === "string" && responseText.trim().length > 0) {
+//     return responseText.trim();
+//   }
 
-  return null;
-}
+//   return null;
+// }
 
 
 const verifyPaymentResult = async (req, res) => {
