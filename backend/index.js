@@ -220,9 +220,9 @@ const processPaymentWithToken = async (req, res) => {
 
     const paymentPayload = buildPaymentPayload(paymentResultData, transientToken);
 
-    return res.status(200).json({
-      payloadLog: paymentPayload
-    })
+    // return res.status(200).json({
+    //   payloadLog: paymentPayload
+    // })
 
     const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
     const paymentResourcePath = "/pts/v2/payments";
