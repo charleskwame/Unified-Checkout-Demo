@@ -3,6 +3,7 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { createHeaders } = require("cybersource-auth");
+const {decodeJwt} = require("jose")
 
 const app = express();
 
@@ -179,145 +180,16 @@ function extractCaptureContext(response, data, responseText) {
   return null;
 }
 
-const processPaymentWithToken = async (req, res) => {
-  try {
-    if (!HOST || !MERCHANT_ID || !API_KEY_ID || !SHARED_SECRET) {
-      return res.status(500).json({
-        error: "CyberSource environment variables are not fully configured.",
-      });
-    }
 
-    const paymentResult = req.body;
-    // return res.status(200).json({
-    //   paymentResult,
-    // })
+const verifyPaymentResult = async (req, res) => {
+  const decodedPaymentResultJWT = decodeJwt(req.body)
 
-    if (!paymentResult) {
-      return res.status(400).json({
-        error: "Invalid payment result. Expected a payment result object or transient token string.",
-      });
-    }
-
-    let transientToken;
-    let paymentResultData = {};
-    if (typeof paymentResult === "string") {
-      transientToken = paymentResult.trim();
-    } else if (typeof paymentResult === "object") {
-      paymentResultData = paymentResult;
-      transientToken = extractTransientToken(paymentResult);
-    } else {
-      return res.status(400).json({
-        error: "Invalid payment result. Expected a payment result object or transient token string.",
-      });
-    }
-
-    if (!transientToken) {
-      return res.status(400).json({
-        error: "No transient token found in the payment result.",
-        receivedKeys: typeof paymentResult === "object" ? Object.keys(paymentResult) : undefined,
-      });
-    }
-
-    const paymentPayload = buildPaymentPayload(paymentResultData, transientToken);
-
-    return res.status(200).json({
-      paymentPayloadLog : paymentPayload
-    })
-
-    // const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-    // const paymentResourcePath = "/pts/v2/payments";
-    // const url = `https://${normalizedHost}${paymentResourcePath}`;
-
-    // const rawBody = JSON.stringify(paymentPayload);
-
-    // const headers = createHeaders(
-    //   MERCHANT_ID,
-    //   normalizedHost,
-    //   "post",
-    //   paymentResourcePath,
-    //   rawBody,
-    //   API_KEY_ID,
-    //   SHARED_SECRET
-    // );
-
-    // const response = await fetch(url, {
-    //   method: "POST",
-    //   headers: headers,
-    //   body: rawBody,
-    //   signal: AbortSignal.timeout(15000),
-    // });
-
-    // const responseText = await response.text();
-    // const data = safeParseJson(responseText);
-
-    // if (!response.ok) {
-    //   return res.status(response.status).json({
-    //     error: data.message || `CyberSource payment request failed (${response.status})`,
-    //     details: data.details || data,
-    //   });
-    // }
-
-    // return res.json(data);
-  } catch (error) {
-    console.error("Payment processing error:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-
-function extractTransientToken(paymentResult) {
-  const candidates = [paymentResult.transientToken, paymentResult.data?.transientToken, paymentResult.token, paymentResult.data?.token];
-
-  for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.trim()) {
-      return candidate.trim();
-    }
-  }
-
-  return null;
+  return res.status(200).json({decodedPaymentResultJWT})
 }
-
-
-function buildPaymentPayload(paymentResult, transientToken) {
-  const orderInfo = paymentResult.data?.orderInformation || paymentResult.orderInformation || paymentResult.orderInformationData || {};
-
-  const amountDetails = orderInfo.amountDetails || {};
-
-  const payload = {
-    clientReferenceInformation: {
-      code: `UC-${Date.now()}`,
-    },
-
-    processingInformation: {
-      commerceIndicator: "internet",
-    },
-
-    tokenInformation: {
-      transientTokenJwt: transientToken,
-    },
-
-    orderInformation: {
-      amountDetails: {
-        totalAmount: amountDetails.totalAmount,
-        currency: amountDetails.currency,
-      },
-    },
-  };
-
-  if (orderInfo.billTo && typeof orderInfo.billTo === "object") {
-    payload.orderInformation.billTo = orderInfo.billTo;
-  }
-
-  if (paymentResult.billTo && typeof paymentResult.billTo === "object") {
-    payload.orderInformation.billTo = paymentResult.billTo;
-  }
-
-  return payload;
-}
-
 app.post("/checkout-session", createCheckoutSession);
+app.post("/verify-payment", verifyPaymentResult)
 
-app.post("/payment-session", processPaymentWithToken);
+// app.post("/payment-session", processPaymentWithToken);
 
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 3000;

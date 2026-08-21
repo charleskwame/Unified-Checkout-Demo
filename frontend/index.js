@@ -131,22 +131,12 @@ const startWithVAS = async (captureContext) => {
     console.log("Unified Checkout complete result:", result);
 
     if (result) {
-      // IMPORTANT:
-      // result is the completed transaction result JWT.
-      // You should send this result to your backend for verification
-      // / order fulfillment, NOT the card/payment data.
+    
+          //  console.log("Payment completed:", result);
 
-      console.log("Payment completed:", result);
+      const response = await axios.post("https://unified-checkout-backend.vercel.app/verify-payment",{completeResponse: result});
 
-      // Example:
-      //
-      // const response = await axios.post(
-      //   "https://unified-checkout-backend.vercel.app/verify-payment",
-      //   {
-      //     completeResponse: result
-      //   }
-      // );
-
+      console.log(response)
       return result;
     }
 
