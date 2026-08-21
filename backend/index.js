@@ -23,6 +23,29 @@ const API_KEY_ID = process.env.CYBERSOURCE_API_KEY_ID;
 const SHARED_SECRET = process.env.CYBERSOURCE_API_SECRET_KEY;
 const resourcePath = "/uc/v1/sessions";
 
+const decodeJwtPayload = (token) => {
+  try {
+    if (!token || typeof token !== "string") {
+      throw new Error("JWT is empty or invalid.");
+    }
+
+    const parts = token.split(".");
+
+    if (parts.length !== 3) {
+      throw new Error("Invalid JWT format.");
+    }
+
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+
+    const json = Buffer.from(base64, "base64").toString("utf8");
+
+    return JSON.parse(json);
+  } catch (error) {
+    console.error("Failed to decode JWT:", error);
+    return null;
+  }
+};
+
 const createCheckoutSession = async (req, res) => {
   try {
     if (!HOST || !MERCHANT_ID || !API_KEY_ID || !SHARED_SECRET) {
@@ -185,34 +208,31 @@ const verifyPaymentResult = async (req, res) => {
   try {
     const { completeResponse } = req.body;
 
-    if (!completeResponse || typeof completeResponse !== "string") {
+    if (!completeResponse) {
       return res.status(400).json({
         error: "completeResponse JWT is required",
       });
     }
 
-    const decoded = jwt.decode(completeResponse, {
-      complete: true,
-    });
+    const decoded = decodeJwtPayload(completeResponse);
 
     if (!decoded) {
       return res.status(400).json({
-        error: "Unable to decode JWT",
+        error: "Unable to decode payment result JWT",
       });
     }
 
-    console.log("JWT header:", decoded.header);
-    console.log("JWT payload:", decoded.payload);
+    console.log("Decoded payment result:", decoded);
 
     return res.status(200).json({
       success: true,
-      payment: decoded.payload,
+      payment: decoded,
     });
   } catch (error) {
-    console.error("Payment JWT decoding failed:", error);
+    console.error("Payment result error:", error);
 
-    return res.status(400).json({
-      error: "Invalid payment result JWT",
+    return res.status(500).json({
+      error: "Failed to process payment result",
     });
   }
 };
