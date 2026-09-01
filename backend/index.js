@@ -258,7 +258,8 @@ const processPayment = async (req, res) => {
       },
     };  
 
-    const response = axios.post("url", )
+    const response = await axios.post(url, payload)
+    return res.status(200).json({message: "Payment success", response})
   } catch (error) {
     console.log(error)
   }

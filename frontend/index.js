@@ -128,13 +128,28 @@ const startWithVAS = async (captureContext) => {
 
     console.log("Transient Token: " + result)
 
+    
     if (result) {
-      const response = await axios.post("https://unified-checkout-backend.vercel.app/verify-payment", { completeResponse: result });
+      const payload = {
+        amount: 50,
+        transientToken: result,
+      };
+      // sending result to backend for payment processing
+      const response = await axios.post("https://unified-checkout-backend.vercel.app/payment", payload);
 
-      if (response.data?.decoded?.status === "AUTHORIZED") {
-        alert("Your payment was successful. Your payment id is: " + response.data.decoded.id + " This is a test transaction. Thank you");
+      // const response = await axios.post("https://unified-checkout-backend.vercel.app/verify-payment", { completeResponse: result });
+
+      // if (response.data?.decoded?.status === "AUTHORIZED") {
+      //   alert("Your payment was successful. Your payment id is: " + response.data.decoded.id + " This is a test transaction. Thank you");
+      // }
+      if (response.status === 200) {
+        console.log(response)
+      } else {
+        console.log("Payment Processing Failed")
       }
+    
     } else {
+
       throw new Error("Unified Checkout returned no payment result.");
     }
   } catch (error) {
