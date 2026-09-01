@@ -164,9 +164,9 @@ const startWithVAS = async (captureContext) => {
         transientToken,
       },
       {
-        headers: {
-          "Content-Type": "application/json",
-        },
+        // headers: {
+        //   "Content-Type": "application/json",
+        // },
 
         timeout: 30000,
       },
