@@ -297,6 +297,9 @@ const processPayment = async (req, res) => {
       clientReferenceInformation: {
         code: `ORDER-${Date.now()}`,
       },
+      processingInformation: {
+        solutionId: MERCHANT_ID
+      },
       orderInformation: {
         amountDetails: {
           totalAmount: amount,
@@ -310,11 +313,15 @@ const processPayment = async (req, res) => {
 
     const rawBody = JSON.stringify(payload);
 
-    // const headers = createHeaders(MERCHANT_ID, host, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+    const headers = createHeaders(MERCHANT_ID, host, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
 
     console.log("Sending transient token to CyberSource...");
 
     const response = await axios.post(url, payload, {
+      headers: {
+        ...headers,
+        "Content-Type": "application/json",
+      },
       timeout: 30000,
       validateStatus: () => true,
     });
