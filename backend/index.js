@@ -4,6 +4,7 @@ const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { createHeaders } = require("cybersource-auth");
 const jwt = require("jsonwebtoken")
+const axios = require("axios")
 
 const app = express();
 
@@ -237,7 +238,37 @@ const verifyPaymentResult = async (req, res) => {
   }
 };
 
+
+const processPayment = async (req, res) => {
+  try {
+    const url = "https://apitest.cybersource.com/pts/v2/payments"
+
+    const payload = {
+      clientReferenceInformation: {
+        code: "TC50171_3",
+      },
+      orderInformation: {
+        amountDetails: {
+          totalAmount: req.amount,
+          currency: "USD",
+        },
+      },
+      tokenInformation: {
+        transientTokenJwt: req.transietToken,
+      },
+    };  
+
+    const response = axios.post("url", )
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+
 app.post("/checkout-session", createCheckoutSession);
+
+// create payment processing
+
 
 app.post("/verify-payment", verifyPaymentResult);
 

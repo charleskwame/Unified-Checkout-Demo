@@ -126,6 +126,8 @@ const startWithVAS = async (captureContext) => {
       paymentScreen: "#embeddedPaymentContainer",
     });
 
+    console.log(result)
+
     if (result) {
       const response = await axios.post("https://unified-checkout-backend.vercel.app/verify-payment", { completeResponse: result });
 
