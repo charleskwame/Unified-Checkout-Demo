@@ -262,7 +262,7 @@ const processPayment = async (req, res) => {
 
     const payloadString = JSON.stringify(payload);
 
-    const headers = cybersourceAuth.generateHeaders(httpMethod, resourcePath, payloadString, config);
+    const headers = createHeaders(MERCHANT_ID, httpMethod, resourcePath, payloadString, API_KEY_ID, SHARED_SECRET);
 
     const response = await axios.post(url, payload, {
       headers: {
