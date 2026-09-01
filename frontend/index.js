@@ -118,7 +118,7 @@ const startWithVAS = async (captureContext) => {
   try {
     client = await window.VAS.UnifiedCheckout(captureContext);
     checkout = await client.createCheckout({
-      autoProcessing: true,
+      autoProcessing: false,
     });
 
     const result = await checkout.mount({
@@ -126,7 +126,7 @@ const startWithVAS = async (captureContext) => {
       paymentScreen: "#embeddedPaymentContainer",
     });
 
-    console.log(result)
+    console.log("Transient Token: " + result)
 
     if (result) {
       const response = await axios.post("https://unified-checkout-backend.vercel.app/verify-payment", { completeResponse: result });
