@@ -243,6 +243,8 @@ const processPayment = async (req, res) => {
   try {
     const url = "https://apitest.cybersource.com/pts/v2/payments"
 
+    const headers = createHeaders(MERCHANT_ID, "post", API_KEY_ID, SHARED_SECRET);
+
     const payload = {
       clientReferenceInformation: {
         code: "TC50171_3",
@@ -258,7 +260,7 @@ const processPayment = async (req, res) => {
       },
     };  
 
-    const response = await axios.post(url, payload)
+    const response = await axios.post(url, payload, headers)
     return res.status(200).json({message: "Payment success", response})
   } catch (error) {
     console.log(error)
