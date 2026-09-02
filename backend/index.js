@@ -83,7 +83,7 @@ const createCheckoutSession = async (req, res) => {
 
     const responseText = await response.text();
     const data = safeParseJson(responseText);
- 
+
     if (!response.ok) {
       return res.status(response.status).json({
         error: data.message || `CyberSource request failed (${response.status})`,

@@ -118,7 +118,7 @@ const startWithVAS = async (captureContext) => {
   try {
     client = await window.VAS.UnifiedCheckout(captureContext);
     checkout = await client.createCheckout({
-      autoProcessing: false,
+      autoProcessing: true,
     });
 
     const result = await checkout.mount({
@@ -126,7 +126,7 @@ const startWithVAS = async (captureContext) => {
       paymentScreen: "#embeddedPaymentContainer",
     });
 
-    console.log("Transient Token: " + result)
+    console.log(result)
 
     
     if (result) {
