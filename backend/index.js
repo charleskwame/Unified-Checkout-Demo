@@ -314,10 +314,7 @@ const processPayment = async (req, res) => {
 
     console.log("Sending transient token to CyberSource...");
 
-    const response = await axios.post(url, rawBody, {
-      timeout: 30000,
-      validateStatus: () => true,
-    });
+    const response = await axios.post(url, rawBody);
 
     console.log("CyberSource payment status:", response.status);
     console.log("CyberSource payment response:", response.data);
