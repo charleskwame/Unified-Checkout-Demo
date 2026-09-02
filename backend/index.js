@@ -241,9 +241,9 @@ const verifyPaymentResult = async (req, res) => {
 
 const processPayment = async (req, res) => {
   try {
-    const url = "https://apitest.cybersource.com/pts/v2/payments";
-    const httpMethod = "POST";
-    const resourcePath = "/pts/v2/payments";
+    const url = "https://apitest.cybersource.com/pts/v2/payments"
+
+    const headers = createHeaders(MERCHANT_ID, "post", API_KEY_ID, SHARED_SECRET);
 
     const payload = {
       clientReferenceInformation: {
@@ -251,43 +251,26 @@ const processPayment = async (req, res) => {
       },
       orderInformation: {
         amountDetails: {
-          totalAmount: req.body.amount,
+          totalAmount: req.amount,
           currency: "USD",
         },
       },
       tokenInformation: {
-        transientTokenJwt: req.body.transientToken,
+        transientTokenJwt: req.transietToken,
       },
-    };
+    };  
 
-    const payloadString = JSON.stringify(payload);
-
-    const headers = cybersourceAuth.generateHeaders(httpMethod, resourcePath, payloadString, config);
-
-    const response = await axios.post(url, payload, {
-      headers: {
-        ...headers,
-        "Content-Type": "application/json",
-      },
-    });
-
-    return res.status(200).json({
-      message: "Payment success",
-      data: response.data,
-    });
+    const response = await axios.post(url, payload, headers)
+    return res.status(200).json({message: "Payment success", response})
   } catch (error) {
-    console.error("CyberSource Request Error:", error.response?.data || error.message);
-
-    return res.status(error.response?.status || 500).json({
-      message: "Payment request failed",
-      error: error.response?.data || error.message,
-    });
+    console.log(error)
   }
-};
+}
 
 
 app.post("/checkout-session", createCheckoutSession);
 
+// create payment processing
 app.post("/payment", processPayment)
 
 
