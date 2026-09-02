@@ -166,95 +166,91 @@ const createCheckoutSession = async (req, res) => {
     const url = `https://${host}${resourcePath}`;
     const payload = req.body;
 
-    // const validationErrors = validateCheckoutPayload(payload);
+    const validationErrors = validateCheckoutPayload(payload);
 
-    // if (validationErrors.length > 0) {
-    //   return res.status(400).json({
-    //     error: "Invalid checkout session payload.",
-    //     validationErrors,
-    //   });
-    // }
+    if (validationErrors.length > 0) {
+      return res.status(400).json({
+        error: "Invalid checkout session payload.",
+        validationErrors,
+      });
+    }
 
-    // const rawBody = JSON.stringify(payload);
+    const rawBody = JSON.stringify(payload);
 
-    // const headers = createHeaders(MERCHANT_ID, host, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+    const headers = createHeaders(MERCHANT_ID, host, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
 
     console.log("Creating CyberSource Capture Context...");
 
-    // const response = await fetch(url, {
-    //   method: "POST",
-    //   headers: {
-    //     ...headers,
-    //     "Content-Type": "application/json",
-    //   },
-    //   body: rawBody,
-    //   signal: AbortSignal.timeout(15000),
-    // });
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...headers,
+        "Content-Type": "application/json",
+      },
+      body: rawBody,
+      signal: AbortSignal.timeout(15000),
+    });
 
-    const response = axios.post(url, payload)
+    const responseText = await response.text();
 
-    // const responseText = await response.text();
+    console.log("CyberSource /uc/v1/sessions status:", response.status);
 
-    // console.log("CyberSource /uc/v1/sessions status:", response.status);
+    if (!response.ok) {
+      console.error("CyberSource Capture Context error:", responseText);
 
-    // // if (!response.ok) {
-    // //   console.error("CyberSource Capture Context error:", responseText);
+      const errorData = safeParseJson(responseText);
 
-    // //   const errorData = safeParseJson(responseText);
-
-    // //   return res.status(response.status).json({
-    // //     error: errorData?.message || "CyberSource Capture Context request failed.",
-    // //     details: errorData || responseText,
-    // //   });
-    // // }
-
-    return res.status(200).json(response)
+      return res.status(response.status).json({
+        error: errorData?.message || "CyberSource Capture Context request failed.",
+        details: errorData || responseText,
+      });
+    }
 
   
-    // // const captureContext = responseText.trim();
+    const captureContext = responseText.trim();
 
-    // if (!captureContext) {
-    //   return res.status(500).json({
-    //     error: "CyberSource returned an empty Capture Context.",
-    //   });
-    // }
+    if (!captureContext) {
+      return res.status(500).json({
+        error: "CyberSource returned an empty Capture Context.",
+      });
+    }
 
   
-    // const jwtParts = captureContext.split(".");
+    const jwtParts = captureContext.split(".");
 
-    // if (jwtParts.length !== 3) {
-    //   console.error("Unexpected CyberSource response:", responseText);
+    if (jwtParts.length !== 3) {
+      console.error("Unexpected CyberSource response:", responseText);
 
-    //   return res.status(500).json({
-    //     error: "CyberSource returned an invalid Capture Context JWT.",
-    //     cyberSourceResponse: responseText,
-    //   });
-    // }
+      return res.status(500).json({
+        error: "CyberSource returned an invalid Capture Context JWT.",
+        cyberSourceResponse: responseText,
+      });
+    }
 
 
-    // const decoded = decodeJwtPayload(captureContext);
+    const decoded = decodeJwtPayload(captureContext);
 
-    // if (!decoded) {
-    //   return res.status(500).json({
-    //     error: "CyberSource returned a JWT that could not be decoded.",
-    //   });
-    // }
+    if (!decoded) {
+      return res.status(500).json({
+        error: "CyberSource returned a JWT that could not be decoded.",
+      });
+    }
 
-    // const contextData = decoded?.ctx?.[0]?.data;
+    const contextData = decoded?.ctx?.[0]?.data;
 
-    // if (!contextData) {
-    //   return res.status(500).json({
-    //     error: "Capture Context does not contain ctx[0].data.",
-    //   });
-    // }
+    if (!contextData) {
+      return res.status(500).json({
+        error: "Capture Context does not contain ctx[0].data.",
+      });
+    }
 
-    // console.log("Capture Context successfully created.");
-    // console.log("Client library:", contextData.clientLibrary);
-    // console.log("Target origins:", contextData.targetOrigins);
+    console.log("Capture Context successfully created.");
+    console.log("Client library:", contextData.clientLibrary);
+    console.log("Target origins:", contextData.targetOrigins);
 
-    // return res.status(200).json({
-    //   captureContext,
-    // });
+    return res.status(200).json({
+      captureContext,
+    });
   } catch (error) {
     console.error("Create checkout session exception:", error);
 
