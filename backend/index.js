@@ -264,108 +264,98 @@ const createCheckoutSession = async (req, res) => {
 };
 
 
-// const processPayment = async (req, res) => {
-//   try {
-//     const missing = validateConfig();
-
-//     if (missing.length) {
-//       return res.status(500).json({
-//         error: "CyberSource environment variables are not configured.",
-//         missing,
-//       });
-//     }
-
-//     const { transientToken, amount, currency = "USD" } = req.body;
-
-//     if (!transientToken || typeof transientToken !== "string") {
-//       return res.status(400).json({
-//         error: "transientToken is required.",
-//       });
-//     }
-
-//     if (!amount || typeof amount !== "string") {
-//       return res.status(400).json({
-//         error: "amount is required.",
-//       });
-//     }
-
-
-//     const host = normalizeHost(CYBERSOURCE_HOST);
-//     const resourcePath = "/pts/v2/payments";
-//     const url = `https://${host}${resourcePath}`;
-
-//     const payload = {
-//       clientReferenceInformation: {
-//         code: `ORDER-${Date.now()}`,
-//       },
-//       processingInformation: {
-//         solutionId: MERCHANT_ID
-//       },
-//       orderInformation: {
-//         amountDetails: {
-//           totalAmount: amount,
-//           currency,
-//         },
-//       },
-//       tokenInformation: {
-//         transientTokenJwt: transientToken,
-//       },
-//     };
-
-//     const rawBody = JSON.stringify(payload);
-
-//     const headers = createHeaders(MERCHANT_ID, host, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
-
-//     console.log("Sending transient token to CyberSource...");
-
-//     const response = await axios.post(url, payload, {
-//       headers: {
-//         ...headers,
-//         "Content-Type": "application/json",
-//       },
-//       timeout: 30000,
-//       validateStatus: () => true,
-//     });
-
-//     console.log("CyberSource payment status:", response.status);
-//     console.log("CyberSource payment response:", response.data);
-
-//     if (response.status >= 200 && response.status < 300) {
-//       return res.status(200).json({
-//         success: true,
-//         message: "Payment authorized successfully.",
-//         status: response.status,
-//         data: response.data,
-//       });
-//     }
-
-//     return res.status(response.status).json({
-//       success: false,
-//       message: "CyberSource payment authorization failed.",
-//       status: response.status,
-//       error: response.data,
-//     });
-//   } catch (error) {
-//     console.error("Payment processing exception:", error);
-//     console.error("CyberSource response:", error.response?.data);
-
-//     return res.status(error.response?.status || 500).json({
-//       success: false,
-//       message: "Payment processing failed.",
-//       error: error.response?.data || error.message,
-//     });
-//   }
-// };
-
 const processPayment = async (req, res) => {
   try {
-    const response = await axios.post("https://apitest.cybersource.com/pts/v2/payments", req.body);
+    const missing = validateConfig();
 
-    return res.status(200).json(response)
+    if (missing.length) {
+      return res.status(500).json({
+        error: "CyberSource environment variables are not configured.",
+        missing,
+      });
+    }
+
+    const { transientToken, amount, currency = "USD" } = req.body;
+
+    if (!transientToken || typeof transientToken !== "string") {
+      return res.status(400).json({
+        error: "transientToken is required.",
+      });
+    }
+
+    if (!amount || typeof amount !== "string") {
+      return res.status(400).json({
+        error: "amount is required.",
+      });
+    }
+
+
+    const host = normalizeHost(CYBERSOURCE_HOST);
+    const resourcePath = "/pts/v2/payments";
+    const url = `https://${host}${resourcePath}`;
+
+    const payload = {
+      clientReferenceInformation: {
+        code: `ORDER-${Date.now()}`,
+      },
+      processingInformation: {
+        solutionId: MERCHANT_ID
+      },
+      orderInformation: {
+        amountDetails: {
+          totalAmount: amount,
+          currency,
+        },
+      },
+      tokenInformation: {
+        transientTokenJwt: transientToken,
+      },
+    };
+
+    const rawBody = JSON.stringify(payload);
+
+    const headers = createHeaders(MERCHANT_ID, host, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+
+    console.log("Sending transient token to CyberSource...");
+
+    const response = await axios.post(url, payload, {
+      headers: {
+        ...headers,
+        "Content-Type": "application/json",
+      },
+      timeout: 30000,
+      validateStatus: () => true,
+    });
+
+    console.log("CyberSource payment status:", response.status);
+    console.log("CyberSource payment response:", response.data);
+
+    if (response.status >= 200 && response.status < 300) {
+      return res.status(200).json({
+        success: true,
+        message: "Payment authorized successfully.",
+        status: response.status,
+        data: response.data,
+      });
+    }
+
+    return res.status(response.status).json({
+      success: false,
+      message: "CyberSource payment authorization failed.",
+      status: response.status,
+      error: response.data,
+    });
   } catch (error) {
-    console.log(error)
+    console.error("Payment processing exception:", error);
+    console.error("CyberSource response:", error.response?.data);
+
+    return res.status(error.response?.status || 500).json({
+      success: false,
+      message: "Payment processing failed.",
+      error: error.response?.data || error.message,
+    });
   }
-}
+};
 
 app.get("/health", (req, res) => {
   res.status(200).json({
