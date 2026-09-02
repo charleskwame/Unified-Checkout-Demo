@@ -36,15 +36,17 @@ const paymentPayload = {
   country: "US",
   locale: "en_US",
 
+  data: {
+    merchantReferenceInformation: {
+      code: generateUUID()
+    }
+  },
+
   completeMandate: {
     type: "CAPTURE",
   },
 
   data: {
-    merchantReferenceInformation: {
-      code: generateUUID()
-    },
-    
     orderInformation: {
       amountDetails: {
         totalAmount: "50.00",
