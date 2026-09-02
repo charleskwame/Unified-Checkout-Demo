@@ -152,34 +152,35 @@ const validateCheckoutPayload = (payload) => {
 
 const createCheckoutSession = async (req, res) => {
   try {
-    const missing = validateConfig();
+    // const missing = validateConfig();
 
-    if (missing.length > 0) {
-      return res.status(500).json({
-        error: "CyberSource environment variables are not configured.",
-        missing,
-      });
-    }
+    // if (missing.length > 0) {
+    //   return res.status(500).json({
+    //     error: "CyberSource environment variables are not configured.",
+    //     missing,
+    //   });
+    // }
 
     const host = normalizeHost(CYBERSOURCE_HOST);
     const resourcePath = "/uc/v1/sessions";
-    const url = `https://${host}${resourcePath}`;
+    // const url = `https://${host}${resourcePath}`;
+    const url = "https://apitest.cybersource.com/uc/v1/sessions";
     const payload = req.body;
 
-    const validationErrors = validateCheckoutPayload(payload);
+    // const validationErrors = validateCheckoutPayload(payload);
 
-    if (validationErrors.length > 0) {
-      return res.status(400).json({
-        error: "Invalid checkout session payload.",
-        validationErrors,
-      });
-    }
+    // if (validationErrors.length > 0) {
+    //   return res.status(400).json({
+    //     error: "Invalid checkout session payload.",
+    //     validationErrors,
+    //   });
+    // }
 
     const rawBody = JSON.stringify(payload);
 
-    const headers = createHeaders(MERCHANT_ID, host, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+    // const headers = createHeaders(MERCHANT_ID, host, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
 
-    console.log("Creating CyberSource Capture Context...");
+    // console.log("Creating CyberSource Capture Context...");
 
     const response = await fetch(url, {
       method: "POST",
