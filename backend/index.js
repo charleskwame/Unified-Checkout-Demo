@@ -239,37 +239,37 @@ const verifyPaymentResult = async (req, res) => {
 };
 
 
-const processPayment = async (req, res) => {
-  try {
-    const url = "https://apitest.cybersource.com/pts/v2/payments"
+// const processPayment = async (req, res) => {
+//   try {
+//     const url = "https://apitest.cybersource.com/pts/v2/payments"
 
-    const payload = {
-      clientReferenceInformation: {
-        code: "TC50171_3",
-      },
-      orderInformation: {
-        amountDetails: {
-          totalAmount: req.amount,
-          currency: "USD",
-        },
-      },
-      tokenInformation: {
-        transientTokenJwt: req.transietToken,
-      },
-    };  
+//     const payload = {
+//       clientReferenceInformation: {
+//         code: "TC50171_3",
+//       },
+//       orderInformation: {
+//         amountDetails: {
+//           totalAmount: req.amount,
+//           currency: "USD",
+//         },
+//       },
+//       tokenInformation: {
+//         transientTokenJwt: req.transietToken,
+//       },
+//     };  
 
-    const response = await axios.post(url, payload)
-    return res.status(200).json({message: "Payment success", response})
-  } catch (error) {
-    console.log(error)
-  }
-}
+//     const response = await axios.post(url, payload)
+//     return res.status(200).json({message: "Payment success", response})
+//   } catch (error) {
+//     console.log(error)
+//   }
+// }
 
 
 app.post("/checkout-session", createCheckoutSession);
 
 // create payment processing
-app.post("/payment", processPayment)
+// app.post("/payment", processPayment)
 
 
 app.post("/verify-payment", verifyPaymentResult);
