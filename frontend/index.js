@@ -2,8 +2,11 @@ const proceedToPaymentButton = document.getElementById("proceedToPayment");
 
 const paymentPayload = {
   targetOrigins: ["https://unified-checkout-frontend.vercel.app"],
+
   clientVersion: "1.0",
+
   allowedCardNetworks: ["VISA", "MASTERCARD"],
+
   allowedPaymentTypes: [
     "PANENTRY",
     "GOOGLEPAY",
@@ -25,11 +28,14 @@ const paymentPayload = {
     "VENMO",
     "AFFIRM",
   ],
+
   country: "US",
   locale: "en_US",
+
   completeMandate: {
     type: "CAPTURE",
   },
+
   data: {
     orderInformation: {
       amountDetails: {
@@ -43,26 +49,29 @@ const paymentPayload = {
 const decodeJwtPayload = (jwt) => {
   try {
     if (!jwt || typeof jwt !== "string") {
-      throw new Error("JWT is empty or invalid.");
+      throw new Error("JWT is empty or invalid."); 
     }
 
     const parts = jwt.split(".");
+
     if (parts.length !== 3) {
       throw new Error("Invalid JWT format.");
     }
 
     let base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+
     while (base64.length % 4) {
       base64 += "=";
     }
 
     const json = atob(base64);
+
     return JSON.parse(json);
   } catch (error) {
     console.error("Failed to decode JWT:", error);
     return null;
   }
-};
+}
 
 const loadCyberSourceSdk = (clientLibrary, integrity) => {
   return new Promise((resolve, reject) => {
@@ -72,13 +81,17 @@ const loadCyberSourceSdk = (clientLibrary, integrity) => {
     }
 
     if (typeof window.Accept === "function" || window.VAS) {
+
       resolve();
+
       return;
-    }
+    }                                                                           
 
     const script = document.createElement("script");
+
     script.type = "text/javascript";
     script.async = false;
+
     script.src = clientLibrary;
 
     if (integrity) {
@@ -86,73 +99,90 @@ const loadCyberSourceSdk = (clientLibrary, integrity) => {
       script.crossOrigin = "anonymous";
     }
 
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("CyberSource SDK failed to load."));
+    script.onload = () => {
+      resolve();
+    };
+
+    script.onerror = (error) => {
+      reject(new Error("CyberSource SDK failed to load."));
+    };
 
     document.head.appendChild(script);
   });
-};
+}
 
 const startWithVAS = async (captureContext) => {
+  let client = null;
+  let checkout = null;
+
   try {
-    const client = await window.VAS.UnifiedCheckout(captureContext);
-    const checkout = await client.createCheckout({
+    client = await window.VAS.UnifiedCheckout(captureContext);
+    checkout = await client.createCheckout({
       autoProcessing: false,
     });
 
-    checkout.on("payment-completion", async (paymentData) => {
-      try {
-  
-        const transientToken = paymentData?.token || eventData?.transientToken;
-
-        if (!transientToken) {
-          throw new Error("No transient token found in completion event.");
-        }
-
-        console.log("Transient Token obtained:", transientToken);
-
-
-        const response = await axios.post("https://unified-checkout-backend.vercel.app/payment", {
-          amount: "50.00",
-          transientToken: transientToken,
-        });
-
-        if (response.status === 200) {
-          console.log("Payment Processing Success:", response.data);
-          checkout.destroy();
-        } else {
-          console.error("Payment Processing Failed");
-        }
-      } catch (err) {
-        console.error("Backend payment dispatch failed:", err);
-      }
-    });
-
-   
-    await checkout.mount({
+    const result = await checkout.mount({
       paymentSelection: "#buttonPaymentListContainer",
       paymentScreen: "#embeddedPaymentContainer",
     });
+
+    console.log("Transient Token: " + result)
+
+    
+    if (result) {
+      const payload = {
+        amount: 50,
+        transientToken: result,
+      };
+
+      const response = await axios.post("https://unified-checkout-backend.vercel.app/payment", payload);
+
+      if (response.status === 200) {
+        console.log(response)
+      } else {
+        console.log("Payment Processing Failed")
+      }
+    
+    } else {
+
+      throw new Error("Unified Checkout returned no payment result.");
+    }
   } catch (error) {
     console.error("Unified Checkout payment failed:", error);
 
     if (error?.name === "UnifiedCheckoutError") {
-      console.error("CyberSource error details:", {
+      console.error("CyberSource error:", {
         reason: error.reason,
         message: error.message,
         code: error.code,
       });
     }
+
     throw error;
+  } finally {
+    if (checkout) {
+      try {
+        checkout.destroy();
+      } catch (error) {
+        console.warn("Could not destroy checkout:", error);
+      }
+    }
+
+    if (client) {
+      try {
+        client.destroy();
+      } catch (error) {
+        console.warn("Could not destroy CyberSource client:", error);
+      }
+    }
   }
 };
 
 const getSessionContext = async (event) => {
-  event.preventDefault();
-
-  proceedToPaymentButton.innerHTML = "Loading Checkout, Please Wait...";
-  proceedToPaymentButton.setAttribute("disabled", "true");
-
+  let isProcessing = true;
+  proceedToPaymentButton.innerHTML = `${isProcessing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}`
+  proceedToPaymentButton.setAttribute("disabled", isProcessing)
+  event.preventDefault();  
   try {
     const response = await axios.post("https://unified-checkout-backend.vercel.app/checkout-session", paymentPayload);
 
@@ -163,28 +193,51 @@ const getSessionContext = async (event) => {
     }
 
     const decoded = decodeJwtPayload(captureContext);
-    const contextData = decoded?.ctx?.[0]?.data;
 
-    if (!contextData || !contextData.clientLibrary) {
-      throw new Error("clientLibrary is missing from decoded capture context.");
+    if (!decoded) {
+      throw new Error("Could not decode capture context.");
     }
 
-    await loadCyberSourceSdk(contextData.clientLibrary, contextData.clientLibraryIntegrity);
+    const contextData = decoded?.ctx?.[0]?.data;
+
+    if (!contextData) {
+      throw new Error("Capture context does not contain ctx[0].data.");
+    }
+
+    const clientLibrary = contextData.clientLibrary;
+
+    const integrity = contextData.clientLibraryIntegrity;
+
+    if (!clientLibrary) {
+      throw new Error("clientLibrary is missing from capture context.");
+    }
+
+    await loadCyberSourceSdk(clientLibrary, integrity);
 
     if (window.VAS && typeof window.VAS.UnifiedCheckout === "function") {
       await startWithVAS(captureContext);
+      isProcessing = false;
+      proceedToPaymentButton.innerHTML = `${isProcessing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}`;
+      proceedToPaymentButton.removeAttribute("disabled");
       return;
     }
 
-    throw new Error("CyberSource SDK loaded, but window.VAS is unavailable.");
+    throw new Error("CyberSource SDK loaded, but neither " + "VAS.UnifiedCheckout() nor Accept() is available.");
   } catch (error) {
     console.error(error);
-    alert("Unable to initialize payment. Check console for details.");
-  } finally {
-    proceedToPaymentButton.innerHTML = "Proceed to Payment";
-    proceedToPaymentButton.removeAttribute("disabled");
+
+    const backendError = error?.response?.data;
+
+    if (backendError) {
+      console.error("Backend error:", backendError);
+    }
+
+    alert("Unable to initialize payment. " + "Please check the browser console for details.");
   }
-};
+  isProcessing = false;
+  proceedToPaymentButton.innerHTML = `${isProcessing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}`;
+  proceedToPaymentButton.removeAttribute("disabled");
+}
 
 if (!proceedToPaymentButton) {
   console.error("Could not find #proceedToPayment button.");
