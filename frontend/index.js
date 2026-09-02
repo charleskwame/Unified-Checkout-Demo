@@ -100,7 +100,7 @@ const startWithVAS = async (captureContext) => {
       autoProcessing: false,
     });
 
-    checkout.on("ready", async (paymentData) => {
+    checkout.on("payment-completion", async (paymentData) => {
       try {
   
         const transientToken = paymentData?.token || eventData?.transientToken;
