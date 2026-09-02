@@ -1,9 +1,5 @@
 const proceedToPaymentButton = document.getElementById("proceedToPayment");
 
-const generateUUID = () => {
-  return "INV-" + Date.now() + "TEST"
-}
-
 const paymentPayload = {
   targetOrigins: ["https://unified-checkout-frontend.vercel.app"],
 
@@ -35,12 +31,6 @@ const paymentPayload = {
 
   country: "US",
   locale: "en_US",
-
-  data: {
-    merchantReferenceInformation: {
-      code: generateUUID()
-    }
-  },
 
   completeMandate: {
     type: "CAPTURE",
