@@ -94,22 +94,16 @@ const loadCyberSourceSdk = (clientLibrary, integrity) => {
 };
 
 const startWithVAS = async (captureContext) => {
-  let checkout;
-
   try {
     const client = await window.VAS.UnifiedCheckout(captureContext);
-
-    checkout = await client.createCheckout({
+    const checkout = await client.createCheckout({
       autoProcessing: false,
     });
 
-    checkout.on("ready", (paymentData) => {
-      console.log("Checkout ready:", paymentData);
-    });
-
-    checkout.on("paymentCompleted", async (eventData) => {
+    checkout.on("ready", async (paymentData) => {
       try {
-        const transientToken = eventData?.transientToken || eventData?.token;
+  
+        const transientToken = paymentData?.token || eventData?.transientToken;
 
         if (!transientToken) {
           throw new Error("No transient token found in completion event.");
@@ -117,23 +111,24 @@ const startWithVAS = async (captureContext) => {
 
         console.log("Transient Token obtained:", transientToken);
 
+
         const response = await axios.post("https://unified-checkout-backend.vercel.app/payment", {
           amount: "50.00",
-          transientToken,
+          transientToken: transientToken,
         });
 
         if (response.status === 200) {
           console.log("Payment Processing Success:", response.data);
-
           checkout.destroy();
         } else {
-          console.error("Payment Processing Failed:", response.data);
+          console.error("Payment Processing Failed");
         }
       } catch (err) {
         console.error("Backend payment dispatch failed:", err);
       }
     });
 
+   
     await checkout.mount({
       paymentSelection: "#buttonPaymentListContainer",
       paymentScreen: "#embeddedPaymentContainer",
@@ -148,11 +143,9 @@ const startWithVAS = async (captureContext) => {
         code: error.code,
       });
     }
-
     throw error;
   }
 };
-
 
 const getSessionContext = async (event) => {
   event.preventDefault();
