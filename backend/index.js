@@ -230,10 +230,6 @@ const verifyPaymentResult = async (req, res) => {
 
     console.log("Decoded payment result:", decoded);
 
-    // Safely extract the IDs from the decoded payload
-    const cybersourceId = decoded.id || decoded.transactionId || null;
-    const merchantRefCode = decoded.merchantReferenceInformation?.code || decoded.orderInformation?.merchantReferenceInformation?.code || null;
-
     return res.status(200).json({
       success: true,
       transactionId: cybersourceId,
@@ -245,10 +241,10 @@ const verifyPaymentResult = async (req, res) => {
 
     return res.status(500).json({
       error: "Failed to process payment result",
-      details: error.message, // Helps debug future backend issues
     });
   }
 };
+
 
 
 
