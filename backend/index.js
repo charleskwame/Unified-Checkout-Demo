@@ -94,6 +94,7 @@ const decodeJwtPayload = (token) => {
     return JSON.parse(Buffer.from(base64, "base64").toString("utf8"));
   } catch (error) {
     console.error("JWT decode failed:", error);
+
     return null;
   }
 };
@@ -129,6 +130,7 @@ const validateCheckoutPayload = (payload) => {
 
   if (!orderInformation || typeof orderInformation !== "object") {
     errors.push("data.orderInformation is required.");
+
     return errors;
   }
 
@@ -136,6 +138,7 @@ const validateCheckoutPayload = (payload) => {
 
   if (!amountDetails || typeof amountDetails !== "object") {
     errors.push("data.orderInformation.amountDetails is required.");
+
     return errors;
   }
 
@@ -164,6 +167,7 @@ const createCheckoutSession = async (req, res) => {
     const host = normalizeHost(CYBERSOURCE_HOST);
     const resourcePath = "/uc/v1/sessions";
     const url = `https://${host}${resourcePath}`;
+
     const payload = req.body;
 
     const validationErrors = validateCheckoutPayload(payload);
@@ -190,6 +194,7 @@ const createCheckoutSession = async (req, res) => {
       },
 
       body: rawBody,
+
       signal: AbortSignal.timeout(15000),
     });
 
@@ -204,6 +209,7 @@ const createCheckoutSession = async (req, res) => {
 
       return res.status(response.status).json({
         error: errorData?.message || "CyberSource Capture Context request failed.",
+
         details: errorData || responseText,
       });
     }
@@ -225,6 +231,7 @@ const createCheckoutSession = async (req, res) => {
 
       return res.status(500).json({
         error: "CyberSource returned an invalid Capture Context JWT.",
+
         cyberSourceResponse: responseText,
       });
     }
@@ -247,7 +254,9 @@ const createCheckoutSession = async (req, res) => {
     }
 
     console.log("Capture Context successfully created.");
+
     console.log("Client library:", contextData.clientLibrary);
+
     console.log("Target origins:", contextData.targetOrigins);
 
     return res.status(200).json({
@@ -263,6 +272,7 @@ const createCheckoutSession = async (req, res) => {
     });
   }
 };
+
 
 
 const processPayment = async (req, res) => {
@@ -292,19 +302,23 @@ const processPayment = async (req, res) => {
 
 
     const host = normalizeHost(CYBERSOURCE_HOST);
+
     const resourcePath = "/pts/v2/payments";
+
     const url = `https://${host}${resourcePath}`;
 
     const payload = {
       clientReferenceInformation: {
         code: `ORDER-${Date.now()}`,
       },
+
       orderInformation: {
         amountDetails: {
           totalAmount: amount,
           currency,
         },
       },
+
       tokenInformation: {
         transientTokenJwt: transientToken,
       },
@@ -319,37 +333,50 @@ const processPayment = async (req, res) => {
     const response = await axios.post(url, payload, {
       headers: {
         ...headers,
+
         "Content-Type": "application/json",
       },
+
       timeout: 30000,
+
       validateStatus: () => true,
     });
 
     console.log("CyberSource payment status:", response.status);
+
     console.log("CyberSource payment response:", response.data);
 
     if (response.status >= 200 && response.status < 300) {
       return res.status(200).json({
         success: true,
+
         message: "Payment authorized successfully.",
+
         status: response.status,
+
         data: response.data,
       });
     }
 
     return res.status(response.status).json({
       success: false,
+
       message: "CyberSource payment authorization failed.",
+
       status: response.status,
+
       error: response.data,
     });
   } catch (error) {
     console.error("Payment processing exception:", error);
+
     console.error("CyberSource response:", error.response?.data);
 
     return res.status(error.response?.status || 500).json({
       success: false,
+
       message: "Payment processing failed.",
+
       error: error.response?.data || error.message,
     });
   }

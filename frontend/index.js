@@ -66,7 +66,9 @@ const loadCyberSourceSdk = (clientLibrary, integrity) => {
 
     if (existingScript) {
       existingScript.addEventListener("load", () => resolve(), { once: true });
+
       existingScript.addEventListener("error", () => reject(new Error("CyberSource SDK failed to load.")), { once: true });
+
       return;
     }
 
@@ -300,6 +302,7 @@ const getSessionContext = async (event) => {
     alert(error?.response?.data?.error || error?.message || "Unable to process payment.");
   } finally {
     proceedToPaymentButton.disabled = false;
+
     proceedToPaymentButton.innerHTML = "Proceed to Payment";
   }
 };
