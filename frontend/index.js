@@ -107,7 +107,7 @@ const startWithVAS = async (captureContext) => {
       console.log("Checkout ready:", paymentData);
     });
 
-    checkout.on("mounted", async (eventData) => {
+    checkout.on("paymentCompleted", async (eventData) => {
       try {
         const transientToken = eventData?.transientToken || eventData?.token;
 
