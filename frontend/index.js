@@ -126,7 +126,7 @@ const startWithVAS = async (captureContext) => {
 
     
    const result = await checkout.mount({
-      //paymentSelection: "#buttonPaymentListContainer",
+      paymentSelection: "#buttonPaymentListContainer",
       paymentScreen: "#embeddedPaymentContainer",
     });
 
