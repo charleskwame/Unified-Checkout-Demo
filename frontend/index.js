@@ -112,12 +112,12 @@ const loadCyberSourceSdk = (clientLibrary, integrity) => {
   });
 }
 
-const startWithVAS = async (captureContext) => {
+const startWithVAS = async () => {
   let client = null;
   let checkout = null;
 
   try {
-    client = await window.VAS.UnifiedCheckout(captureContext);
+    client = await window.VAS.UnifiedCheckout();
     checkout = await client.createCheckout({
       autoProcessing: true,
     });
@@ -217,7 +217,7 @@ const getSessionContext = async (event) => {
     await loadCyberSourceSdk(clientLibrary, integrity);
 
     if (window.VAS && typeof window.VAS.UnifiedCheckout === "function") {
-      await startWithVAS(captureContext);
+      await startWithVAS();
       isProcessing = false;
       proceedToPaymentButton.innerHTML = `${isProcessing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}`;
       proceedToPaymentButton.removeAttribute("disabled");
