@@ -5,9 +5,9 @@ const paymentPayload = {
 
   clientVersion: "1.0",
 
-  allowedCardNetworks: ["VISA", "MASTERCARD"],
+  //allowedCardNetworks: ["VISA", "MASTERCARD"],
 
-  allowedPaymentTypes: [
+ /*allowedPaymentTypes: [
     "PANENTRY",
     "GOOGLEPAY",
     "CLICKTOPAY",
@@ -28,6 +28,7 @@ const paymentPayload = {
     "VENMO",
     "AFFIRM",
   ],
+  */
 
   country: "US",
   locale: "en_US",
