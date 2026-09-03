@@ -122,10 +122,13 @@ const startWithVAS = async (captureContext) => {
       autoProcessing: true,
     });
 
-    const result = await checkout.mount({
-      paymentSelection: "#buttonPaymentListContainer",
-      paymentScreen: "#embeddedPaymentContainer",
-    });
+    const result = await checkout.mount();
+
+    
+   // const result = await checkout.mount({
+      //paymentSelection: "#buttonPaymentListContainer",
+      //paymentScreen: "#embeddedPaymentContainer",
+   // });//
 
     console.log(result)
 
