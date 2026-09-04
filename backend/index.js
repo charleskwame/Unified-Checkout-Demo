@@ -3,6 +3,8 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { createHeaders } = require("cybersource-auth");
+// const jwt = require("jsonwebtoken")
+const jose = require("jose");
 const axios = require("axios")
 
 const app = express();
@@ -221,7 +223,22 @@ const verifyPaymentResult = async (req, res) => {
       });
     }
 
-    const decoded = decodeJwtPayload(completeResponse);
+    // const decoded = decodeJwtPayload(completeResponse);
+
+    const cyberSourcePublicKey = await jose.importSPKI(process.env.CYBERSOURCE_PUBLIC_KEY, "RS256");
+
+    // const decoded = jose.decodeJwt(completeResponse);
+
+    const { payload, protectedHeader } = await jose.jwtVerify(completeResponse, cyberSourcePublicKey, {
+      issuer: "cybersource",
+    });
+
+    return res.status(200).json({
+      success: true,
+      decoded: payload,
+      protectedHeader,
+    });
+    
 
     if (!decoded) {
       return res.status(400).json({
