@@ -86,7 +86,7 @@ const createCheckoutSession = async (req, res) => {
     // const responseText = await response.text();
     // const data = safeParseJson(responseText);
 
-    return response;
+    return res.status(200).json(response.data);
 
     if (!response.ok) {
       return res.status(response.status).json({
