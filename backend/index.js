@@ -86,7 +86,7 @@ const createCheckoutSession = async (req, res) => {
     // const responseText = await response.text();
     // const data = safeParseJson(responseText);
 
-    return res.status(200).json(response.data);
+    // return res.status(200).json(response.data);
 
     if (!response.ok) {
       return res.status(response.status).json({
@@ -95,7 +95,7 @@ const createCheckoutSession = async (req, res) => {
       });
     }
 
-    const captureContext = extractCaptureContext(response, data, responseText);
+    const captureContext = response?.data;
 
     if (!captureContext) {
       return res.status(500).json({

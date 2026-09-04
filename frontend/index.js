@@ -184,15 +184,15 @@ const getSessionContext = async (event) => {
   let isProcessing = true;
   proceedToPaymentButton.innerHTML = `${isProcessing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}`
   proceedToPaymentButton.setAttribute("disabled", isProcessing)
-  event.preventDefault();  
+  event.preventDefault();
   try {
     const response = await axios.post("https://unified-checkout-backend.vercel.app/checkout-session", paymentPayload);
 
     console.log(response.data);
 
-    return;
+    // return;
 
-    const captureContext = response.data?.captureContext;
+    const captureContext = response?.data;
 
     if (!captureContext) {
       throw new Error("The backend did not return a capture context.");
