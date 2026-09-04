@@ -158,40 +158,6 @@ const normalizeCheckoutPayload = (rawPayload) => {
   return payload;
 }
 
-// function safeParseJson(value) {
-//   try {
-//     return JSON.parse(value);
-//   } catch {
-//     return {};
-//   }
-// }
-
-// const extractCaptureContext = (response, data, responseText) => {
-//   const value =
-//     data.captureContext ||
-//     data.id ||
-//     data.token ||
-//     data.keyId ||
-//     data.data?.captureContext ||
-//     data.data?.id ||
-//     data.data?.token ||
-//     data.data?.keyId ||
-//     response.headers.get("capture-context") ||
-//     response.headers.get("v-c-capture-context") ||
-//     response.headers.get("location");
-
-//   if (typeof value === "string" && value.trim().length > 0) {
-//     return value.trim();
-//   }
-
-//   if (typeof responseText === "string" && responseText.trim().length > 0) {
-//     return responseText.trim();
-//   }
-
-//   return null;
-// }
-
-
 const verifyPaymentResult = async (req, res) => {
   try {
     const { completeResponse } = req.body;
@@ -225,39 +191,7 @@ const verifyPaymentResult = async (req, res) => {
   }
 };
 
-
-// const processPayment = async (req, res) => {
-//   try {
-//     const url = "https://apitest.cybersource.com/pts/v2/payments"
-
-//     const payload = {
-//       clientReferenceInformation: {
-//         code: "TC50171_3",
-//       },
-//       orderInformation: {
-//         amountDetails: {
-//           totalAmount: req.amount,
-//           currency: "USD",
-//         },
-//       },
-//       tokenInformation: {
-//         transientTokenJwt: req.transietToken,
-//       },
-//     };  
-
-//     const response = await axios.post(url, payload)
-//     return res.status(200).json({message: "Payment success", response})
-//   } catch (error) {
-//     console.log(error)
-//   }
-// }
-
-
 app.post("/checkout-session", createCheckoutSession);
-
-// create payment processing
-// app.post("/payment", processPayment)
-
 
 app.post("/verify-payment", verifyPaymentResult);
 
