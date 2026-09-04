@@ -87,8 +87,29 @@
       #buttonPaymentListContainer,
       #embeddedPaymentContainer {
         width: 100%;
-        max-width: 430px;
-        margin-top: 18px;
+      }
+
+      #checkoutSidebar {
+        position: fixed;
+        z-index: 10;
+        top: 0;
+        right: 0;
+        display: grid;
+        align-content: start;
+        gap: 18px;
+        width: min(440px, 100vw);
+        height: 100vh;
+        padding: 32px 24px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: -18px 0 45px rgba(35, 54, 67, 0.18);
+        transform: translateX(100%);
+        transition: transform 220ms ease;
+      }
+
+      #unified-checkout-container.is-initializing + #checkoutSidebar {
+        transform: translateX(0);
       }
 
       #orderSummary {
@@ -146,11 +167,13 @@
       <button id="proceedToPayment">Proceed to Payment</button>
     </div>
 
-    <!-- Container for payment option buttons (Google Pay, Apple Pay, Card, etc.) -->
-    <div id="buttonPaymentListContainer"></div>
+    <aside id="checkoutSidebar" aria-label="Payment checkout">
+      <!-- Container for payment option buttons (Google Pay, Apple Pay, Card, etc.) -->
+      <div id="buttonPaymentListContainer"></div>
 
-    <!-- Container for embedded payment forms -->
-    <div id="embeddedPaymentContainer"></div>
+      <!-- Container for embedded payment forms -->
+      <div id="embeddedPaymentContainer"></div>
+    </aside>
   </body>
   <script src="https://cdn.jsdelivr.net/npm/axios@1.13.2/dist/axios.min.js"></script>
   <script src="./index.js" type="module"></script>
