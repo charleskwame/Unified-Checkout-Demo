@@ -73,19 +73,7 @@ const createCheckoutSession = async (req, res) => {
 
     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
 
-    // const response = await fetch(url, {
-    //   method: "POST",
-    //   headers: headers,
-    //   body: rawBody,
-    //   signal: AbortSignal.timeout(10000),
-    // });
-
     const response = await axios.post(url, rawBody, { headers: headers, timeout: 10000 });
-
-    // const responseText = await response.text();
-    // const data = safeParseJson(responseText);
-
-    // return res.status(200).json(response.data);
 
     if (!response.ok) {
       return res.status(response.status).json({
@@ -93,8 +81,6 @@ const createCheckoutSession = async (req, res) => {
         details: data.details || data,
       });
     }
-
-    // const captureContext = extractCaptureContext(response.data, data, responseText);
 
     const captureContext = response?.data;
 
@@ -123,15 +109,6 @@ const validateCheckoutPayload = (payload) => {
   if (typeof payload.clientVersion !== "string" || payload.clientVersion.trim().length === 0) {
     errors.push("clientVersion is required.");
   }
-
- /* if (!Array.isArray(payload.allowedCardNetworks) || payload.allowedCardNetworks.length === 0) {
-    errors.push("allowedCardNetworks must be a non-empty array.");
-  }
-
-  if (!Array.isArray(payload.allowedPaymentTypes) || payload.allowedPaymentTypes.length === 0) {
-    errors.push("allowedPaymentTypes must be a non-empty array.");
-  }
-  */
 
   if (typeof payload.country !== "string" || payload.country.trim().length === 0) {
     errors.push("country is required.");
@@ -177,40 +154,6 @@ const normalizeCheckoutPayload = (rawPayload) => {
   return payload;
 }
 
-// function safeParseJson(value) {
-//   try {
-//     return JSON.parse(value);
-//   } catch {
-//     return {};
-//   }
-// }
-
-// const extractCaptureContext = (response, data, responseText) => {
-//   const value =
-//     data.captureContext ||
-//     data.id ||
-//     data.token ||
-//     data.keyId ||
-//     data.data?.captureContext ||
-//     data.data?.id ||
-//     data.data?.token ||
-//     data.data?.keyId ||
-//     response.headers.get("capture-context") ||
-//     response.headers.get("v-c-capture-context") ||
-//     response.headers.get("location");
-
-//   if (typeof value === "string" && value.trim().length > 0) {
-//     return value.trim();
-//   }
-
-//   if (typeof responseText === "string" && responseText.trim().length > 0) {
-//     return responseText.trim();
-//   }
-
-//   return null;
-// }
-
-
 const verifyPaymentResult = async (req, res) => {
   try {
     const { completeResponse } = req.body;
@@ -244,39 +187,7 @@ const verifyPaymentResult = async (req, res) => {
   }
 };
 
-
-// const processPayment = async (req, res) => {
-//   try {
-//     const url = "https://apitest.cybersource.com/pts/v2/payments"
-
-//     const payload = {
-//       clientReferenceInformation: {
-//         code: "TC50171_3",
-//       },
-//       orderInformation: {
-//         amountDetails: {
-//           totalAmount: req.amount,
-//           currency: "USD",
-//         },
-//       },
-//       tokenInformation: {
-//         transientTokenJwt: req.transietToken,
-//       },
-//     };  
-
-//     const response = await axios.post(url, payload)
-//     return res.status(200).json({message: "Payment success", response})
-//   } catch (error) {
-//     console.log(error)
-//   }
-// }
-
-
 app.post("/checkout-session", createCheckoutSession);
-
-// create payment processing
-// app.post("/payment", processPayment)
-
 
 app.post("/verify-payment", verifyPaymentResult);
 
