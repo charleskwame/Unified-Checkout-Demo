@@ -70,7 +70,7 @@ const createCheckoutSession = async (req, res) => {
       });
     }
 
-    // const rawBody = JSON.stringify(payload);
+    const rawBody = JSON.stringify(payload);
 
     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
 
