@@ -1,6 +1,34 @@
 const proceedToPaymentButton = document.getElementById("proceedToPayment");
 const checkoutContainer = document.getElementById("unified-checkout-container");
 const paymentLoadingStatus = document.getElementById("paymentLoadingStatus");
+const paymentContainers = [
+  document.getElementById("buttonPaymentListContainer"),
+  document.getElementById("embeddedPaymentContainer"),
+];
+
+const watchForPaymentUi = () => {
+  const hideLoadingStatus = () => {
+    const paymentUiLoaded = paymentContainers.some((container) => {
+      return container?.childElementCount > 0 || container?.textContent.trim();
+    });
+
+    if (paymentUiLoaded) {
+      paymentLoadingStatus?.setAttribute("hidden", "true");
+      observer.disconnect();
+    }
+  };
+
+  const observer = new MutationObserver(hideLoadingStatus);
+
+  paymentContainers.forEach((container) => {
+    container?.addEventListener("load", hideLoadingStatus, { once: true });
+    observer.observe(container, { childList: true, subtree: true });
+  });
+
+  hideLoadingStatus();
+
+  return observer;
+};
 
 const paymentPayload = {
   targetOrigins: ["https://unified-checkout-frontend.vercel.app"],
@@ -88,6 +116,7 @@ const loadCyberSourceSdk = (clientLibrary, integrity) => {
 const startWithVAS = async (captureContext) => {
   let client = null;
   let checkout = null;
+  let paymentUiObserver = null;
 
   try {
     client = await window.VAS.UnifiedCheckout(captureContext);
@@ -96,12 +125,11 @@ const startWithVAS = async (captureContext) => {
     });
 
     paymentLoadingStatus?.removeAttribute("hidden");
-    const mountPromise = checkout.mount({
+    paymentUiObserver = watchForPaymentUi();
+    const result = await checkout.mount({
       paymentSelection: "#buttonPaymentListContainer",
       paymentScreen: "#embeddedPaymentContainer",
     });
-    paymentLoadingStatus?.setAttribute("hidden", "true");
-    const result = await mountPromise;
 
     console.log(result)
 
@@ -135,6 +163,8 @@ const startWithVAS = async (captureContext) => {
 
     throw error;
   } finally {
+    paymentUiObserver?.disconnect();
+
     if (checkout) {
       try {
         checkout.destroy();
