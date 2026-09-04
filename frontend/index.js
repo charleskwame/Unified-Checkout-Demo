@@ -184,6 +184,10 @@ const getSessionContext = async (event) => {
   try {
     const response = await axios.post("https://unified-checkout-backend.vercel.app/checkout-session", paymentPayload);
 
+    console.log(response);
+
+    return;
+
     const captureContext = response.data?.captureContext;
 
     if (!captureContext) {

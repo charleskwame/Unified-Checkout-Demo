@@ -74,15 +74,19 @@ const createCheckoutSession = async (req, res) => {
 
     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: headers,
-      body: rawBody,
-      signal: AbortSignal.timeout(10000),
-    });
+    // const response = await fetch(url, {
+    //   method: "POST",
+    //   headers: headers,
+    //   body: rawBody,
+    //   signal: AbortSignal.timeout(10000),
+    // });
 
-    const responseText = await response.text();
-    const data = safeParseJson(responseText);
+    const response = await axios.post(url, rawBody, { headers: headers, timeout: 10000 });
+
+    // const responseText = await response.text();
+    // const data = safeParseJson(responseText);
+
+    return req.status(200).json({ message: "success", response: response.data });
 
     if (!response.ok) {
       return res.status(response.status).json({
