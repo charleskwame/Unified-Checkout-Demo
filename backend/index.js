@@ -70,47 +70,38 @@ const createCheckoutSession = async (req, res) => {
       });
     }
 
-    const rawBody = JSON.stringify(payload);
+    // const rawBody = JSON.stringify(payload);
 
     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
 
-    // const response = await fetch(url, {
-    //   method: "POST",
-    //   headers: headers,
-    //   body: rawBody,
-    //   signal: AbortSignal.timeout(10000),
-    // });
-
     const response = await axios.post(url, payload, { headers, timeout: 10000 });
-
-    // const responseText = await response.text();
-    // const data = safeParseJson(responseText);
-
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: data.message || `CyberSource request failed (${response.status})`,
-        details: data.details || data,
-      });
-    }
-
-    // const captureContext = extractCaptureContext(response, data, responseText);
 
     const captureContext = response.data;
 
     if (!captureContext) {
       return res.status(500).json({
         error: "CyberSource returned a 200 response, but no Capture Context token was generated.",
-        responseHeaders: Object.fromEntries(response.headers.entries()),
-        rawResponse: data,
-        rawText: responseText,
+        responseHeaders: response.headers,
+        rawResponse: response.data,
       });
     }
 
-    return res.json({ captureContext });
+    return res.json(captureContext);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("CyberSource API Error:", error.response?.data || error.message);
+
+    if (error.response) {
+      return res.status(error.response.status).json({
+        error: error.response.data?.message || "CyberSource request failed",
+        details: error.response.data,
+      });
+    }
+
+    return res.status(500).json({ error: error.message });
   }
 };
+
+
 
 const validateCheckoutPayload = (payload) => {
   const errors = [];
@@ -122,14 +113,6 @@ const validateCheckoutPayload = (payload) => {
   if (typeof payload.clientVersion !== "string" || payload.clientVersion.trim().length === 0) {
     errors.push("clientVersion is required.");
   }
-
-  // if (!Array.isArray(payload.allowedCardNetworks) || payload.allowedCardNetworks.length === 0) {
-  //   errors.push("allowedCardNetworks must be a non-empty array.");
-  // }
-
-  // if (!Array.isArray(payload.allowedPaymentTypes) || payload.allowedPaymentTypes.length === 0) {
-  //   errors.push("allowedPaymentTypes must be a non-empty array.");
-  // }
 
   if (typeof payload.country !== "string" || payload.country.trim().length === 0) {
     errors.push("country is required.");
