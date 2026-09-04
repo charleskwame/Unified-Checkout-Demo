@@ -5,11 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Unified Checkout Demo</title>
     <style>
+      :root {
+        color-scheme: light;
+        font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+        color: #172033;
+        background: #eef3f7;
+      }
+
       body {
-        font-family: Arial, Helvetica, sans-serif;
-        background-color: #f5f5f5;
+        background:
+          radial-gradient(circle at 15% 10%, rgba(255, 255, 255, 0.9), transparent 34%),
+          linear-gradient(135deg, #eaf1f5 0%, #f8f5ef 52%, #dfe9e8 100%);
         margin: 0;
-        padding: 20px;
+        padding: 32px 20px;
         min-height: 100vh;
         display: flex;
         flex-direction: column;
@@ -20,71 +28,120 @@
 
       #unified-checkout-container {
         width: 100%;
-        max-width: 400px;
-        background: #fff;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        max-width: 430px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        border-radius: 18px;
+        padding: 28px;
+        box-shadow: 0 22px 55px rgba(35, 54, 67, 0.16);
+        box-sizing: border-box;
+        backdrop-filter: blur(12px);
+      }
+
+      .checkout-eyebrow {
+        margin: 0 0 8px;
+        color: #147d78;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
       }
 
       #unified-checkout-container p {
-        margin: 8px 0;
-        color: #333;
+        margin: 0;
+        color: #53606d;
       }
 
-      #unified-checkout-container p:first-child {
-        font-size: 18px;
-        font-weight: bold;
-        margin-bottom: 16px;
+      #orderSummaryTitle {
+        margin-bottom: 22px;
+        color: #172033;
+        font-family: Georgia, serif;
+        font-size: 30px;
+        line-height: 1.1;
       }
 
       #proceedToPayment {
         width: 100%;
-        padding: 12px;
-        margin-top: 16px;
-        background-color: #007bff;
+        padding: 15px 18px;
+        margin-top: 24px;
+        background-color: #147d78;
         color: #fff;
         border: none;
-        border-radius: 4px;
+        border-radius: 10px;
         font-size: 16px;
+        font-weight: 700;
         cursor: pointer;
+        transition: background-color 160ms ease, transform 160ms ease, opacity 160ms ease;
       }
 
-      #proceedToPayment:hover {
-        background-color: #0056b3;
+      #proceedToPayment:hover:not(:disabled) {
+        background-color: #0e615e;
+        transform: translateY(-1px);
       }
 
-      /*#buttonPaymentListContainer,
+      #proceedToPayment:disabled {
+        cursor: wait;
+        opacity: 0.7;
+      }
+
+      #buttonPaymentListContainer,
       #embeddedPaymentContainer {
         width: 100%;
-        max-width: 400px;
-        margin-top: 16px;
-      }*/
-
-      #priceDiv{
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+        max-width: 430px;
+        margin-top: 18px;
       }
 
-      #priceDiv > p{
-      width: fit-content;
+      #orderSummary {
+        display: grid;
+        gap: 18px;
+        transition: opacity 180ms ease, transform 180ms ease;
       }
 
-      #itemName{
-      font-size: large;
-      font-weight: 700;
+      #unified-checkout-container.is-initializing #orderSummary {
+        display: none;
+      }
+
+      #priceDiv {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 18px;
+        border-top: 1px solid #e2e8eb;
+      }
+
+      #itemName {
+        color: #172033;
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      #priceDiv p:last-child {
+        color: #172033;
+        font-size: 24px;
+        font-weight: 800;
+      }
+
+      @media (max-width: 520px) {
+        body {
+          padding: 18px 14px;
+        }
+
+        #unified-checkout-container {
+          padding: 22px;
+        }
       }
     </style>
   </head>
   <body>
     <div id="unified-checkout-container">
-      <p>Order Summary</p>
-      <p id="itemName">1x BMX Racing Bike</p>
-      <div id="priceDiv">
-        <p>Ghc</p>
-        <p>300.00</p>
+      <p class="checkout-eyebrow">Unified Checkout Demo</p>
+      <div id="orderSummary">
+        <p id="orderSummaryTitle">Order Summary</p>
+        <p id="itemName">1x BMX Racing Bike</p>
+        <div id="priceDiv">
+          <p>GHC</p>
+          <p>300.00</p>
+        </div>
       </div>
       <button id="proceedToPayment">Proceed to Payment</button>
     </div>

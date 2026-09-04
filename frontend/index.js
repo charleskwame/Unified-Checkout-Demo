@@ -1,4 +1,5 @@
 const proceedToPaymentButton = document.getElementById("proceedToPayment");
+const checkoutContainer = document.getElementById("unified-checkout-container");
 
 const paymentPayload = {
   targetOrigins: ["https://unified-checkout-frontend.vercel.app"],
@@ -152,6 +153,7 @@ const getSessionContext = async (event) => {
   let isProcessing = true;
   proceedToPaymentButton.innerHTML = `${isProcessing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}`
   proceedToPaymentButton.setAttribute("disabled", isProcessing)
+  checkoutContainer?.classList.add("is-initializing");
   event.preventDefault();  
   try {
     const response = await axios.post("https://unified-checkout-backend.vercel.app/checkout-session", paymentPayload);
@@ -189,6 +191,7 @@ const getSessionContext = async (event) => {
       isProcessing = false;
       proceedToPaymentButton.innerHTML = `${isProcessing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}`;
       proceedToPaymentButton.removeAttribute("disabled");
+      checkoutContainer?.classList.remove("is-initializing");
       return;
     }
 
@@ -207,6 +210,7 @@ const getSessionContext = async (event) => {
   isProcessing = false;
   proceedToPaymentButton.innerHTML = `${isProcessing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}`;
   proceedToPaymentButton.removeAttribute("disabled");
+  checkoutContainer?.classList.remove("is-initializing");
 }
 
 if (!proceedToPaymentButton) {
