@@ -1,34 +1,67 @@
 const proceedToPaymentButton = document.getElementById("proceedToPayment");
 const checkoutContainer = document.getElementById("unified-checkout-container");
 const paymentLoadingStatus = document.getElementById("paymentLoadingStatus");
-const paymentContainers = [
-  document.getElementById("buttonPaymentListContainer"),
-  document.getElementById("embeddedPaymentContainer"),
-];
+const paymentContainers = [document.getElementById("buttonPaymentListContainer"), document.getElementById("embeddedPaymentContainer")];
 
-// const watchForPaymentUi = () => {
-//   const hideLoadingStatus = () => {
-//     const paymentUiLoaded = paymentContainers.some((container) => {
-//       return container?.childElementCount > 0 || container?.textContent.trim();
-//     });
+const watchForPaymentUi = () => {
+  const checkPaymentUiLoaded = () => {
+    return paymentContainers.some((container) => {
+      if (!container) return false;
 
-//     if (paymentUiLoaded) {
-//       paymentLoadingStatus?.setAttribute("hidden", "true");
-//       observer.disconnect();
-//     }
-//   };
+      // Check for direct child elements, text, or injected iframes
+      const hasChildren = container.childElementCount > 0;
+      const hasText = container.textContent.trim().length > 0;
+      const hasIframe = container.querySelector("iframe") !== null;
 
-//   const observer = new MutationObserver(hideLoadingStatus);
+      return hasChildren || hasText || hasIframe;
+    });
+  };
 
-//   paymentContainers.forEach((container) => {
-//     container?.addEventListener("load", hideLoadingStatus, { once: true });
-//     observer.observe(container, { childList: true, subtree: true });
-//   });
+  const hideLoadingStatus = () => {
+    if (checkPaymentUiLoaded()) {
+      paymentLoadingStatus?.setAttribute("hidden", "true");
+      return true;
+    }
+    return false;
+  };
 
-//   hideLoadingStatus();
+  // Immediate initial check in case UI rendered synchronously
+  if (hideLoadingStatus()) return null;
 
-//   return observer;
-// };
+  // 1. Observe direct DOM mutations on containers
+  const observer = new MutationObserver(() => {
+    if (hideLoadingStatus()) {
+      cleanup();
+    }
+  });
+
+  paymentContainers.forEach((container) => {
+    if (container) {
+      observer.observe(container, { childList: true, subtree: true });
+    }
+  });
+
+  // 2. Interval polling to handle Shadow DOM or delayed iframe mounts
+  const pollInterval = setInterval(() => {
+    if (hideLoadingStatus()) {
+      cleanup();
+    }
+  }, 100);
+
+  // 3. Safety timeout to force-hide spinner after 15s if loading takes too long
+  const safetyTimeout = setTimeout(() => {
+    cleanup();
+    paymentLoadingStatus?.setAttribute("hidden", "true");
+  }, 15000);
+
+  const cleanup = () => {
+    observer.disconnect();
+    clearInterval(pollInterval);
+    clearTimeout(safetyTimeout);
+  };
+
+  return { disconnect: cleanup };
+};
 
 const paymentPayload = {
   targetOrigins: ["https://unified-checkout-frontend.vercel.app"],
@@ -51,7 +84,7 @@ const paymentPayload = {
 const decodeJwtPayload = (jwt) => {
   try {
     if (!jwt || typeof jwt !== "string") {
-      throw new Error("JWT is empty or invalid."); 
+      throw new Error("JWT is empty or invalid.");
     }
 
     const parts = jwt.split(".");
@@ -73,7 +106,7 @@ const decodeJwtPayload = (jwt) => {
     console.error("Failed to decode JWT:", error);
     return null;
   }
-}
+};
 
 const loadCyberSourceSdk = (clientLibrary, integrity) => {
   return new Promise((resolve, reject) => {
@@ -83,17 +116,14 @@ const loadCyberSourceSdk = (clientLibrary, integrity) => {
     }
 
     if (typeof window.Accept === "function" || window.VAS) {
-
       resolve();
-
       return;
-    }                                                                           
+    }
 
     const script = document.createElement("script");
 
     script.type = "text/javascript";
     script.async = false;
-
     script.src = clientLibrary;
 
     if (integrity) {
@@ -105,77 +135,12 @@ const loadCyberSourceSdk = (clientLibrary, integrity) => {
       resolve();
     };
 
-    script.onerror = (error) => {
+    script.onerror = () => {
       reject(new Error("CyberSource SDK failed to load."));
     };
 
     document.head.appendChild(script);
   });
-}
-
-
-const watchForPaymentUi = () => {
-  const checkPaymentUiLoaded = () => {
-    return paymentContainers.some((container) => {
-      if (!container) return false;
-
-      // Check for direct child elements (like iframes or custom elements)
-      const hasChildren = container.childElementCount > 0;
-      // Check if text content exists
-      const hasText = container.textContent.trim().length > 0;
-      // Check for shadow roots or inner iframe instances if applicable
-      const hasIframe = container.querySelector("iframe") !== null;
-
-      return hasChildren || hasText || hasIframe;
-    });
-  };
-
-  const hideLoadingStatus = () => {
-    if (checkPaymentUiLoaded()) {
-      paymentLoadingStatus?.setAttribute("hidden", "true");
-      return true;
-    }
-    return false;
-  };
-
-  // Immediate initial check
-  if (hideLoadingStatus()) return null;
-
-  // Use MutationObserver for parent container child node changes
-  const observer = new MutationObserver(() => {
-    if (hideLoadingStatus()) {
-      observer.disconnect();
-    }
-  });
-
-  paymentContainers.forEach((container) => {
-    if (container) {
-      observer.observe(container, { childList: true, subtree: true });
-    }
-  });
-
-  // Fallback Polling Interval (in case elements render inside Shadow DOM)
-  const pollInterval = setInterval(() => {
-    if (hideLoadingStatus()) {
-      observer.disconnect();
-      clearInterval(pollInterval);
-    }
-  }, 100);
-
-  // Safety cleanup timeout (15 seconds)
-  setTimeout(() => {
-    observer.disconnect();
-    clearInterval(pollInterval);
-    // Force hide if loading takes too long
-    paymentLoadingStatus?.setAttribute("hidden", "true");
-  }, 15000);
-
-  return {
-    disconnect: () => {
-      observer.disconnect();
-      clearInterval(pollInterval);
-    },
-  };
 };
 
 const startWithVAS = async (captureContext) => {
@@ -191,23 +156,24 @@ const startWithVAS = async (captureContext) => {
 
     paymentLoadingStatus?.removeAttribute("hidden");
 
-    // Start watching BEFORE calling mount
+    // Initialize watcher (will automatically disconnect once UI mounts)
     paymentUiObserver = watchForPaymentUi();
 
-    // Do NOT await mount if you want code below it to execute immediately during rendering,
-    // OR allow mount to process asynchronously while watchForPaymentUi listens.
+    // checkout.mount() returns a Promise that resolves when the payment process FINISHES
     const result = await checkout.mount({
       paymentSelection: "#buttonPaymentListContainer",
       paymentScreen: "#embeddedPaymentContainer",
     });
 
-    // Code below here only executes AFTER payment is submitted/completed!
+    console.log(result);
+
     if (result) {
       const response = await axios.post("https://unified-checkout-backend.vercel.app/verify-payment", { completeResponse: result });
 
       if (response.data?.decoded?.status === "AUTHORIZED") {
         alert("Your payment was successful. Your payment id is: " + response.data.decoded.id + " This is a test transaction. Thank you");
       }
+
       if (response.status === 200) {
         console.log(response);
       } else {
@@ -229,9 +195,8 @@ const startWithVAS = async (captureContext) => {
 
     throw error;
   } finally {
-    // Note: Do NOT disconnect paymentUiObserver here if you want the spinner
-    // to stay hidden while the user interacts with the mounted form.
-    // The observer automatically disconnects itself when UI loads.
+    // Clean up observer if it hasn't disconnected itself
+    paymentUiObserver?.disconnect();
 
     if (checkout) {
       try {
@@ -251,82 +216,13 @@ const startWithVAS = async (captureContext) => {
   }
 };
 
-// const startWithVAS = async (captureContext) => {
-//   let client = null;
-//   let checkout = null;
-//   let paymentUiObserver = null;
-
-//   try {
-//     client = await window.VAS.UnifiedCheckout(captureContext);
-//     checkout = await client.createCheckout({
-//       autoProcessing: true,
-//     });
-
-//     paymentLoadingStatus?.removeAttribute("hidden");
-//     paymentUiObserver = watchForPaymentUi();
-//     const result = await checkout.mount({
-//       paymentSelection: "#buttonPaymentListContainer",
-//       paymentScreen: "#embeddedPaymentContainer",
-//     });
-
-//     console.log(result)
-
-    
-//     if (result) {
-//       const response = await axios.post("https://unified-checkout-backend.vercel.app/verify-payment", { completeResponse: result });
-
-//       if (response.data?.decoded?.status === "AUTHORIZED") {
-//         alert("Your payment was successful. Your payment id is: " + response.data.decoded.id + " This is a test transaction. Thank you");
-//       }
-//       if (response.status === 200) {
-//         console.log(response)
-//       } else {
-//         console.log("Payment Processing Failed")
-//       }
-    
-//     } else {
-
-//       throw new Error("Unified Checkout returned no payment result.");
-//     }
-//   } catch (error) {
-//     console.error("Unified Checkout payment failed:", error);
-
-//     if (error?.name === "UnifiedCheckoutError") {
-//       console.error("CyberSource error:", {
-//         reason: error.reason,
-//         message: error.message,
-//         code: error.code,
-//       });
-//     }
-
-//     throw error;
-//   } finally {
-//     paymentUiObserver?.disconnect();
-
-//     if (checkout) {
-//       try {
-//         checkout.destroy();
-//       } catch (error) {
-//         console.warn("Could not destroy checkout:", error);
-//       }
-//     }
-
-//     if (client) {
-//       try {
-//         client.destroy();
-//       } catch (error) {
-//         console.warn("Could not destroy CyberSource client:", error);
-//       }
-//     }
-//   }
-// };
-
 const getSessionContext = async (event) => {
   let isProcessing = true;
-  proceedToPaymentButton.innerHTML = `${isProcessing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}`
-  proceedToPaymentButton.setAttribute("disabled", isProcessing)
+  proceedToPaymentButton.innerHTML = `${isProcessing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}`;
+  proceedToPaymentButton.setAttribute("disabled", isProcessing);
   checkoutContainer?.classList.add("is-initializing");
-  event.preventDefault();  
+  event.preventDefault();
+
   try {
     const response = await axios.post("https://unified-checkout-backend.vercel.app/checkout-session", paymentPayload);
 
@@ -349,7 +245,6 @@ const getSessionContext = async (event) => {
     }
 
     const clientLibrary = contextData.clientLibrary;
-
     const integrity = contextData.clientLibraryIntegrity;
 
     if (!clientLibrary) {
@@ -367,7 +262,7 @@ const getSessionContext = async (event) => {
       return;
     }
 
-    throw new Error("CyberSource SDK loaded, but neither " + "VAS.UnifiedCheckout() nor Accept() is available.");
+    throw new Error("CyberSource SDK loaded, but neither VAS.UnifiedCheckout() nor Accept() is available.");
   } catch (error) {
     console.error(error);
 
@@ -377,13 +272,14 @@ const getSessionContext = async (event) => {
       console.error("Backend error:", backendError);
     }
 
-    alert("Unable to initialize payment. " + "Please check the browser console for details.");
+    alert("Unable to initialize payment. Please check the browser console for details.");
   }
+
   isProcessing = false;
   proceedToPaymentButton.innerHTML = `${isProcessing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}`;
   proceedToPaymentButton.removeAttribute("disabled");
   checkoutContainer?.classList.remove("is-initializing");
-}
+};
 
 if (!proceedToPaymentButton) {
   console.error("Could not find #proceedToPayment button.");
