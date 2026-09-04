@@ -5,9 +5,9 @@ const paymentPayload = {
 
   clientVersion: "1.0",
 
-  //allowedCardNetworks: ["VISA", "MASTERCARD"],
+  allowedCardNetworks: ["VISA", "MASTERCARD"],
 
- /*allowedPaymentTypes: [
+  allowedPaymentTypes: [
     "PANENTRY",
     "GOOGLEPAY",
     "CLICKTOPAY",
@@ -28,7 +28,6 @@ const paymentPayload = {
     "VENMO",
     "AFFIRM",
   ],
-  */
 
   country: "US",
   locale: "en_US",
@@ -122,10 +121,7 @@ const startWithVAS = async (captureContext) => {
       autoProcessing: true,
     });
 
-    //const result = await checkout.mount();
-
-    
-   const result = await checkout.mount({
+    const result = await checkout.mount({
       paymentSelection: "#buttonPaymentListContainer",
       paymentScreen: "#embeddedPaymentContainer",
     });
@@ -184,15 +180,11 @@ const getSessionContext = async (event) => {
   let isProcessing = true;
   proceedToPaymentButton.innerHTML = `${isProcessing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}`
   proceedToPaymentButton.setAttribute("disabled", isProcessing)
-  event.preventDefault();
+  event.preventDefault();  
   try {
     const response = await axios.post("https://unified-checkout-backend.vercel.app/checkout-session", paymentPayload);
 
-    console.log(response.data);
-
-    // return;
-
-    const captureContext = response?.data;
+    const captureContext = response.data?.captureContext;
 
     if (!captureContext) {
       throw new Error("The backend did not return a capture context.");

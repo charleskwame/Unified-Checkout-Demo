@@ -74,19 +74,15 @@ const createCheckoutSession = async (req, res) => {
 
     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
 
-    // const response = await fetch(url, {
-    //   method: "POST",
-    //   headers: headers,
-    //   body: rawBody,
-    //   signal: AbortSignal.timeout(10000),
-    // });
+    const response = await fetch(url, {
+      method: "POST",
+      headers: headers,
+      body: rawBody,
+      signal: AbortSignal.timeout(10000),
+    });
 
-    const response = await axios.post(url, rawBody, { headers: headers, timeout: 10000 });
-
-    // const responseText = await response.text();
-    // const data = safeParseJson(responseText);
-
-    // return res.status(200).json(response.data);
+    const responseText = await response.text();
+    const data = safeParseJson(responseText);
 
     if (!response.ok) {
       return res.status(response.status).json({
@@ -95,7 +91,7 @@ const createCheckoutSession = async (req, res) => {
       });
     }
 
-    const captureContext = response?.data;
+    const captureContext = extractCaptureContext(response, data, responseText);
 
     if (!captureContext) {
       return res.status(500).json({
@@ -123,14 +119,13 @@ const validateCheckoutPayload = (payload) => {
     errors.push("clientVersion is required.");
   }
 
- /* if (!Array.isArray(payload.allowedCardNetworks) || payload.allowedCardNetworks.length === 0) {
+  if (!Array.isArray(payload.allowedCardNetworks) || payload.allowedCardNetworks.length === 0) {
     errors.push("allowedCardNetworks must be a non-empty array.");
   }
 
   if (!Array.isArray(payload.allowedPaymentTypes) || payload.allowedPaymentTypes.length === 0) {
     errors.push("allowedPaymentTypes must be a non-empty array.");
   }
-  */
 
   if (typeof payload.country !== "string" || payload.country.trim().length === 0) {
     errors.push("country is required.");
