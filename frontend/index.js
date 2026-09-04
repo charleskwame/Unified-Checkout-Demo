@@ -1,5 +1,6 @@
 const proceedToPaymentButton = document.getElementById("proceedToPayment");
 const checkoutContainer = document.getElementById("unified-checkout-container");
+const paymentLoadingStatus = document.getElementById("paymentLoadingStatus");
 
 const paymentPayload = {
   targetOrigins: ["https://unified-checkout-frontend.vercel.app"],
@@ -94,10 +95,13 @@ const startWithVAS = async (captureContext) => {
       autoProcessing: true,
     });
 
-    const result = await checkout.mount({
+    paymentLoadingStatus?.removeAttribute("hidden");
+    const mountPromise = checkout.mount({
       paymentSelection: "#buttonPaymentListContainer",
       paymentScreen: "#embeddedPaymentContainer",
     });
+    paymentLoadingStatus?.setAttribute("hidden", "true");
+    const result = await mountPromise;
 
     console.log(result)
 
