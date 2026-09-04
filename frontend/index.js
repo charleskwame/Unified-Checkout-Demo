@@ -2,40 +2,12 @@ const proceedToPaymentButton = document.getElementById("proceedToPayment");
 
 const paymentPayload = {
   targetOrigins: ["https://unified-checkout-frontend.vercel.app"],
-
   clientVersion: "1.0",
-
-  // allowedCardNetworks: ["VISA", "MASTERCARD"],
-
-  // allowedPaymentTypes: [
-  //   "PANENTRY",
-  //   "GOOGLEPAY",
-  //   "CLICKTOPAY",
-  //   "APPLEPAY",
-  //   "PAZE",
-  //   "CHECK",
-  //   "TMS_TOKEN",
-  //   "AFTERPAY",
-  //   "IDEAL",
-  //   "MULTIBANCO",
-  //   "PRZELEWY24",
-  //   "MYBANK",
-  //   "KONBINI",
-  //   "DRAGONPAY",
-  //   "BANCONTACT",
-  //   "TINKPAYBYBANK",
-  //   "PAYPAL",
-  //   "VENMO",
-  //   "AFFIRM",
-  // ],
-
   country: "US",
   locale: "en_US",
-
   completeMandate: {
     type: "CAPTURE",
   },
-
   data: {
     orderInformation: {
       amountDetails: {
