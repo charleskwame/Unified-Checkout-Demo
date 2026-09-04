@@ -108,35 +108,6 @@
         transition: transform 220ms ease;
       }
 
-      #paymentLoadingStatus {
-        display: none;
-        align-items: center;
-        gap: 10px;
-        margin-top: -8px;
-        color: #53606d;
-        font-size: 14px;
-      }
-
-      #paymentLoadingStatus::before {
-        width: 14px;
-        height: 14px;
-        border: 2px solid #c9d8d8;
-        border-top-color: #147d78;
-        border-radius: 50%;
-        content: "";
-        animation: payment-spinner 700ms linear infinite;
-      }
-
-      #unified-checkout-container.is-initializing + #checkoutSidebar #paymentLoadingStatus {
-        display: flex;
-      }
-
-      @keyframes payment-spinner {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
       #unified-checkout-container.is-initializing + #checkoutSidebar {
         transform: translateX(0);
       }
@@ -198,9 +169,6 @@
 
     <aside id="checkoutSidebar" aria-label="Payment checkout">
       <h2>Complete Payment</h2>
-      <div id="paymentLoadingStatus" role="status" aria-live="polite">
-        Loading secure payment form...
-      </div>
       <!-- Container for payment option buttons (Google Pay, Apple Pay, Card, etc.) -->
       <div id="buttonPaymentListContainer"></div>
 

@@ -1,67 +1,5 @@
 const proceedToPaymentButton = document.getElementById("proceedToPayment");
 const checkoutContainer = document.getElementById("unified-checkout-container");
-const paymentLoadingStatus = document.getElementById("paymentLoadingStatus");
-const paymentContainers = [document.getElementById("buttonPaymentListContainer"), document.getElementById("embeddedPaymentContainer")];
-
-const watchForPaymentUi = () => {
-  const checkPaymentUiLoaded = () => {
-    return paymentContainers.some((container) => {
-      if (!container) return false;
-
-      // Check for direct child elements, text, or injected iframes
-      const hasChildren = container.childElementCount > 0;
-      const hasText = container.textContent.trim().length > 0;
-      const hasIframe = container.querySelector("iframe") !== null;
-
-      return hasChildren || hasText || hasIframe;
-    });
-  };
-
-  const hideLoadingStatus = () => {
-    if (checkPaymentUiLoaded()) {
-      paymentLoadingStatus?.setAttribute("hidden", "true");
-      return true;
-    }
-    return false;
-  };
-
-  // Immediate initial check in case UI rendered synchronously
-  if (hideLoadingStatus()) return null;
-
-  // 1. Observe direct DOM mutations on containers
-  const observer = new MutationObserver(() => {
-    if (hideLoadingStatus()) {
-      cleanup();
-    }
-  });
-
-  paymentContainers.forEach((container) => {
-    if (container) {
-      observer.observe(container, { childList: true, subtree: true });
-    }
-  });
-
-  // 2. Interval polling to handle Shadow DOM or delayed iframe mounts
-  const pollInterval = setInterval(() => {
-    if (hideLoadingStatus()) {
-      cleanup();
-    }
-  }, 100);
-
-  // 3. Safety timeout to force-hide spinner after 15s if loading takes too long
-  const safetyTimeout = setTimeout(() => {
-    cleanup();
-    paymentLoadingStatus?.setAttribute("hidden", "true");
-  }, 15000);
-
-  const cleanup = () => {
-    observer.disconnect();
-    clearInterval(pollInterval);
-    clearTimeout(safetyTimeout);
-  };
-
-  return { disconnect: cleanup };
-};
 
 const paymentPayload = {
   targetOrigins: ["https://unified-checkout-frontend.vercel.app"],
@@ -146,7 +84,6 @@ const loadCyberSourceSdk = (clientLibrary, integrity) => {
 const startWithVAS = async (captureContext) => {
   let client = null;
   let checkout = null;
-  let paymentUiObserver = null;
 
   try {
     client = await window.VAS.UnifiedCheckout(captureContext);
@@ -154,12 +91,6 @@ const startWithVAS = async (captureContext) => {
       autoProcessing: true,
     });
 
-    paymentLoadingStatus?.removeAttribute("hidden");
-
-    // Initialize watcher (will automatically disconnect once UI mounts)
-    paymentUiObserver = watchForPaymentUi();
-
-    // checkout.mount() returns a Promise that resolves when the payment process FINISHES
     const result = await checkout.mount({
       paymentSelection: "#buttonPaymentListContainer",
       paymentScreen: "#embeddedPaymentContainer",
@@ -195,9 +126,6 @@ const startWithVAS = async (captureContext) => {
 
     throw error;
   } finally {
-    // Clean up observer if it hasn't disconnected itself
-    paymentUiObserver?.disconnect();
-
     if (checkout) {
       try {
         checkout.destroy();
