@@ -89,6 +89,7 @@ const createCheckoutSession = async (req, res) => {
         error: "CyberSource returned a 200 response, but no Capture Context token was generated.",
         responseHeaders: Object.fromEntries(response.headers.entries()),
         rawResponse: data,
+        rawText: responseText,
       });
     }
 
