@@ -123,13 +123,13 @@ const validateCheckoutPayload = (payload) => {
     errors.push("clientVersion is required.");
   }
 
-  if (!Array.isArray(payload.allowedCardNetworks) || payload.allowedCardNetworks.length === 0) {
-    errors.push("allowedCardNetworks must be a non-empty array.");
-  }
+  // if (!Array.isArray(payload.allowedCardNetworks) || payload.allowedCardNetworks.length === 0) {
+  //   errors.push("allowedCardNetworks must be a non-empty array.");
+  // }
 
-  if (!Array.isArray(payload.allowedPaymentTypes) || payload.allowedPaymentTypes.length === 0) {
-    errors.push("allowedPaymentTypes must be a non-empty array.");
-  }
+  // if (!Array.isArray(payload.allowedPaymentTypes) || payload.allowedPaymentTypes.length === 0) {
+  //   errors.push("allowedPaymentTypes must be a non-empty array.");
+  // }
 
   if (typeof payload.country !== "string" || payload.country.trim().length === 0) {
     errors.push("country is required.");
