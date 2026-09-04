@@ -3,8 +3,7 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { createHeaders } = require("cybersource-auth");
-// const jwt = require("jsonwebtoken")
-const jose = require("jose");
+const jwt = require("jsonwebtoken")
 const axios = require("axios")
 
 const app = express();
@@ -96,8 +95,6 @@ const createCheckoutSession = async (req, res) => {
       });
     }
 
-    // const captureContext = extractCaptureContext(response.data, data, responseText);
-
     const captureContext = response?.data;
 
     if (!captureContext) {
@@ -179,38 +176,38 @@ const normalizeCheckoutPayload = (rawPayload) => {
   return payload;
 }
 
-// function safeParseJson(value) {
-//   try {
-//     return JSON.parse(value);
-//   } catch {
-//     return {};
-//   }
-// }
+function safeParseJson(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return {};
+  }
+}
 
-// const extractCaptureContext = (response, data, responseText) => {
-//   const value =
-//     data.captureContext ||
-//     data.id ||
-//     data.token ||
-//     data.keyId ||
-//     data.data?.captureContext ||
-//     data.data?.id ||
-//     data.data?.token ||
-//     data.data?.keyId ||
-//     response.headers.get("capture-context") ||
-//     response.headers.get("v-c-capture-context") ||
-//     response.headers.get("location");
+const extractCaptureContext = (response, data, responseText) => {
+  const value =
+    data.captureContext ||
+    data.id ||
+    data.token ||
+    data.keyId ||
+    data.data?.captureContext ||
+    data.data?.id ||
+    data.data?.token ||
+    data.data?.keyId ||
+    response.headers.get("capture-context") ||
+    response.headers.get("v-c-capture-context") ||
+    response.headers.get("location");
 
-//   if (typeof value === "string" && value.trim().length > 0) {
-//     return value.trim();
-//   }
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value.trim();
+  }
 
-//   if (typeof responseText === "string" && responseText.trim().length > 0) {
-//     return responseText.trim();
-//   }
+  if (typeof responseText === "string" && responseText.trim().length > 0) {
+    return responseText.trim();
+  }
 
-//   return null;
-// }
+  return null;
+}
 
 
 const verifyPaymentResult = async (req, res) => {
@@ -223,22 +220,7 @@ const verifyPaymentResult = async (req, res) => {
       });
     }
 
-    // const decoded = decodeJwtPayload(completeResponse);
-
-    const cyberSourcePublicKey = await jose.importSPKI(process.env.CYBERSOURCE_PUBLIC_KEY, "RS256");
-
-    // const decoded = jose.decodeJwt(completeResponse);
-
-    const { payload, protectedHeader } = await jose.jwtVerify(completeResponse, cyberSourcePublicKey, {
-      issuer: "cybersource",
-    });
-
-    return res.status(200).json({
-      success: true,
-      decoded: payload,
-      protectedHeader,
-    });
-    
+    const decoded = decodeJwtPayload(completeResponse);
 
     if (!decoded) {
       return res.status(400).json({
