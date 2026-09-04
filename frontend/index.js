@@ -232,7 +232,7 @@ const getSessionContext = async (event) => {
   } catch (error) {
     console.error(error);
 
-    const backendError = error?.response?.data?.error || error?.response?.data?.message || error?.message;
+    const backendError = error?.response?.data;
 
     if (backendError) {
       console.error("Backend error:", backendError);
