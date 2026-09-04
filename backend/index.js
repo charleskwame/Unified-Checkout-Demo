@@ -74,15 +74,17 @@ const createCheckoutSession = async (req, res) => {
 
     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: headers,
-      body: rawBody,
-      signal: AbortSignal.timeout(10000),
-    });
+    // const response = await fetch(url, {
+    //   method: "POST",
+    //   headers: headers,
+    //   body: rawBody,
+    //   signal: AbortSignal.timeout(10000),
+    // });
 
-    const responseText = await response.text();
-    const data = safeParseJson(responseText);
+    const response = await axios.post(url, payload, { headers, timeout: 10000 });
+
+    // const responseText = await response.text();
+    // const data = safeParseJson(responseText);
 
     if (!response.ok) {
       return res.status(response.status).json({
@@ -91,7 +93,9 @@ const createCheckoutSession = async (req, res) => {
       });
     }
 
-    const captureContext = extractCaptureContext(response, data, responseText);
+    // const captureContext = extractCaptureContext(response, data, responseText);
+
+    const captureContext = response.data;
 
     if (!captureContext) {
       return res.status(500).json({
@@ -171,38 +175,38 @@ const normalizeCheckoutPayload = (rawPayload) => {
   return payload;
 }
 
-function safeParseJson(value) {
-  try {
-    return JSON.parse(value);
-  } catch {
-    return {};
-  }
-}
+// function safeParseJson(value) {
+//   try {
+//     return JSON.parse(value);
+//   } catch {
+//     return {};
+//   }
+// }
 
-const extractCaptureContext = (response, data, responseText) => {
-  const value =
-    data.captureContext ||
-    data.id ||
-    data.token ||
-    data.keyId ||
-    data.data?.captureContext ||
-    data.data?.id ||
-    data.data?.token ||
-    data.data?.keyId ||
-    response.headers.get("capture-context") ||
-    response.headers.get("v-c-capture-context") ||
-    response.headers.get("location");
+// const extractCaptureContext = (response, data, responseText) => {
+//   const value =
+//     data.captureContext ||
+//     data.id ||
+//     data.token ||
+//     data.keyId ||
+//     data.data?.captureContext ||
+//     data.data?.id ||
+//     data.data?.token ||
+//     data.data?.keyId ||
+//     response.headers.get("capture-context") ||
+//     response.headers.get("v-c-capture-context") ||
+//     response.headers.get("location");
 
-  if (typeof value === "string" && value.trim().length > 0) {
-    return value.trim();
-  }
+//   if (typeof value === "string" && value.trim().length > 0) {
+//     return value.trim();
+//   }
 
-  if (typeof responseText === "string" && responseText.trim().length > 0) {
-    return responseText.trim();
-  }
+//   if (typeof responseText === "string" && responseText.trim().length > 0) {
+//     return responseText.trim();
+//   }
 
-  return null;
-}
+//   return null;
+// }
 
 
 const verifyPaymentResult = async (req, res) => {

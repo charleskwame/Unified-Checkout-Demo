@@ -5,29 +5,29 @@ const paymentPayload = {
 
   clientVersion: "1.0",
 
-  allowedCardNetworks: ["VISA", "MASTERCARD"],
+  // allowedCardNetworks: ["VISA", "MASTERCARD"],
 
-  allowedPaymentTypes: [
-    "PANENTRY",
-    "GOOGLEPAY",
-    "CLICKTOPAY",
-    "APPLEPAY",
-    "PAZE",
-    "CHECK",
-    "TMS_TOKEN",
-    "AFTERPAY",
-    "IDEAL",
-    "MULTIBANCO",
-    "PRZELEWY24",
-    "MYBANK",
-    "KONBINI",
-    "DRAGONPAY",
-    "BANCONTACT",
-    "TINKPAYBYBANK",
-    "PAYPAL",
-    "VENMO",
-    "AFFIRM",
-  ],
+  // allowedPaymentTypes: [
+  //   "PANENTRY",
+  //   "GOOGLEPAY",
+  //   "CLICKTOPAY",
+  //   "APPLEPAY",
+  //   "PAZE",
+  //   "CHECK",
+  //   "TMS_TOKEN",
+  //   "AFTERPAY",
+  //   "IDEAL",
+  //   "MULTIBANCO",
+  //   "PRZELEWY24",
+  //   "MYBANK",
+  //   "KONBINI",
+  //   "DRAGONPAY",
+  //   "BANCONTACT",
+  //   "TINKPAYBYBANK",
+  //   "PAYPAL",
+  //   "VENMO",
+  //   "AFFIRM",
+  // ],
 
   country: "US",
   locale: "en_US",
@@ -184,7 +184,7 @@ const getSessionContext = async (event) => {
   try {
     const response = await axios.post("https://unified-checkout-backend.vercel.app/checkout-session", paymentPayload);
 
-    const captureContext = response.data?.captureContext;
+    const captureContext = response.data;
 
     if (!captureContext) {
       throw new Error("The backend did not return a capture context.");
