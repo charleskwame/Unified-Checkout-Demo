@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 const apiBaseUrl = (import.meta.env.VITE_CHECKOUT_API_URL || "https://unified-checkout-backend.vercel.app").replace(/\/$/, "");
 
 const paymentPayload = {
-  targetOrigins: ["https://reactjsimplementation.vercel.app/"],
+  targetOrigins: [window.location.origin],
   clientVersion: "1.0",
   allowedCardNetworks: ["VISA", "MASTERCARD"],
   allowedPaymentTypes: [

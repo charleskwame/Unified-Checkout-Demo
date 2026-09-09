@@ -7,7 +7,12 @@ const jwt = require("jsonwebtoken");
 const axios = require("axios");
 
 const app = express();
-const allowedOrigins = ["https://unified-checkout-frontend.vercel.app", "http://localhost:5173", process.env.FRONTEND_ORIGIN].filter(Boolean);
+const allowedOrigins = [
+  "https://unified-checkout-frontend.vercel.app",
+  "https://reactjsimplementation.vercel.app",
+  "http://localhost:5173",
+  process.env.FRONTEND_ORIGIN,
+].filter(Boolean);
 
 app.use(
   cors({
