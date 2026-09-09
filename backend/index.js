@@ -3,17 +3,25 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { createHeaders } = require("cybersource-auth");
-const jwt = require("jsonwebtoken")
-const axios = require("axios")
+const jwt = require("jsonwebtoken");
+const axios = require("axios");
 
 const app = express();
+const allowedOrigins = ["https://unified-checkout-frontend.vercel.app", "http://localhost:5173", process.env.FRONTEND_ORIGIN].filter(Boolean);
 
 app.use(
   cors({
-    origin: "https://unified-checkout-frontend.vercel.app",
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Origin is not allowed by CORS."));
+    },
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
 app.use(express.json());
@@ -101,8 +109,6 @@ const createCheckoutSession = async (req, res) => {
   }
 };
 
-
-
 const validateCheckoutPayload = (payload) => {
   const errors = [];
 
@@ -140,8 +146,7 @@ const validateCheckoutPayload = (payload) => {
   }
 
   return errors;
-}
-
+};
 
 const normalizeCheckoutPayload = (rawPayload) => {
   const payload = rawPayload && typeof rawPayload === "object" ? { ...rawPayload } : {};
@@ -156,7 +161,7 @@ const normalizeCheckoutPayload = (rawPayload) => {
 
   delete payload.orderInformation;
   return payload;
-}
+};
 
 const verifyPaymentResult = async (req, res) => {
   try {
