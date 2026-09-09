@@ -9,6 +9,9 @@ export async function POST(request) {
     return Response.json(await createCaptureContext(payload));
   } catch (error) {
     const details = error.response?.data;
-    return Response.json({ error: details?.message || error.message || "CyberSource request failed", ...(details ? { details } : {}) }, { status: error.status || error.response?.status || 500 });
+    return Response.json(
+      { error: details?.message || error.message || "CyberSource request failed", ...(details ? { details } : {}) },
+      { status: error.status || error.response?.status || 500 },
+    );
   }
 }
