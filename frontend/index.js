@@ -10,8 +10,7 @@ const paymentPayload = {
     type: "CAPTURE",
   },
   captureMandate: {
-    billingAddress: false,
-    shippingAddress: false,
+    billingInformation: "NONE",
   },
   data: {
     orderInformation: {
