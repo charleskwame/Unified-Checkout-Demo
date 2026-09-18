@@ -9,9 +9,6 @@ const paymentPayload = {
   completeMandate: {
     type: "CAPTURE",
   },
-  captureMandate: {
-    billingInformation: "NONE",
-  },
   data: {
     orderInformation: {
       amountDetails: {
