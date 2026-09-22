@@ -102,35 +102,12 @@ const createDailySubscription = async (req, res) => {
         // return res.json(customerTokenResponse)
 
         // Extract card and billTo from request
-        // Normalise incoming payload fields
-const incomingBuyerInfo = req.body.buyerInformation || {};
-const incomingClientRef = req.body.clientReferenceInformation || {};
-const incomingCard = req.body.paymentInformation?.card || {};
-// Build cardData in expected shape
-const cardData = {
-    number: incomingCard.number,
-    expirationMonth: incomingCard.expirationMonth,
-    expirationYear: incomingCard.expirationYear,
-    type: incomingCard.type || incomingCard.cardType,
-};
-// Build billToData, ensuring billingEmail field
-const billToData = {
-    ...req.body.billTo,
-    billingEmail: req.body.billTo?.billingEmail || req.body.billTo?.email,
-};
-if (!cardData || !cardData.number) {
-    return res.status(400).json({ error: "Card number is missing in the payload." });
-}
-// Translate numeric card type to brand name for CyberSource
-const codeToBrand = {
-    "001": "visa",
-    "002": "mastercard",
-    "003": "american-express",
-    "004": "discover",
-    "000": "unknown",
-};
-const cardBrand = codeToBrand[cardData.type] || cardData.type;
+        const cardData = req.body.paymentInformation?.card || req.body.card;
+        const billToData = req.body.billTo;
 
+        if (!cardData || !cardData.number) {
+            return res.status(400).json({ error: "Card number is missing in the payload." });
+        }
 
         // --- Step 2: Create Instrument Identifier ---
         // const instrumentIdentifierPath = "/tms/v1/instrumentidentifiers";
@@ -162,7 +139,8 @@ const cardBrand = codeToBrand[cardData.type] || cardData.type;
         const paymentInstrumentPayload = {
             card: {
                 expirationMonth: cardData.expirationMonth,
-                type: cardBrand
+                expirationYear: cardData.expirationYear,
+                type: cardData.type
             },
             billTo: billToData,
             instrumentIdentifier: {
