@@ -7,27 +7,28 @@ const jwt = require("jsonwebtoken");
 const axios = require("axios");
 
 const app = express();
-// const allowedOrigins = [
-//   "https://unified-checkout-frontend.vercel.app",
-//   "https://reactjsimplementation.vercel.app",
-//   "http://localhost:5173",
-//   process.env.FRONTEND_ORIGIN,
-// ].filter(Boolean);
+const allowedOrigins = [
+    "https://unified-checkout-frontend.vercel.app",
+    "https://reactjsimplementation.vercel.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5500",
+    process.env.FRONTEND_ORIGIN,
+].filter(Boolean);
 
-// app.use(
-//   cors({
-//     origin: (origin, callback) => {
-//       if (!origin || allowedOrigins.includes(origin)) {
-//         callback(null, true);
-//         return;
-//       }
+app.use(
+    cors({
+        origin: (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+                return;
+            }
 
-//       callback(new Error("Origin is not allowed by CORS."));
-//     },
-//     methods: ["GET", "POST", "OPTIONS"],
-//     allowedHeaders: ["Content-Type", "Authorization"],
-//   }),
-// );
+            callback(new Error("Origin is not allowed by CORS."));
+        },
+        methods: ["GET", "POST", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+    }),
+);
 
 app.use(express.json());
 
@@ -63,7 +64,7 @@ const decodeJwtPayload = (token) => {
     }
 };
 
-const createToken = async (req, res) => {
+const createDailySubscription = async (req, res) => {
     try {
         if (!HOST || !MERCHANT_ID || !API_KEY_ID || !SHARED_SECRET) {
             return res.status(500).json({
@@ -217,7 +218,7 @@ const createToken = async (req, res) => {
     }
 };
 
-app.post("/token", createToken);
+app.post("/subscribe-daily", createDailySubscription);
 
 if (process.env.NODE_ENV !== "production") {
     const PORT = process.env.PORT || 3000;
