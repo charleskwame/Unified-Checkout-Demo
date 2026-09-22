@@ -58,3 +58,49 @@ document.addEventListener('DOMContentLoaded', () => {
         // }, 1500);
     });
 });
+
+const subscribeButton = document.getElementById("subscribeButton")
+
+subscribeButton.addEventListener("click", async (e) => {
+    e.preventDefault()
+    const formData = new FormData(document.getElementById("payment-form"))
+    const payload = {
+        buyerInformation: {
+            merchantCustomerID: formData.get("merchantCustomerID"), //USER IDENTIFIER FROM YOUR WEBSITE
+            email: formData.get("buyerEmail"), //USER EMAIL FROM YOUR WEBSITE
+        },
+        clientReferenceInformation: {
+            code: formData.get("clientReferenceCode"), //CUSTOM REFERENCE CODE
+        },
+        paymentInformation: {
+            card: {
+                number: formData.get("cardNumber"), //CARD NUMBER FROM YOUR WEBSITE
+                expirationMonth: formData.get("expirationMonth"), //EXPIRATION MONTH FROM YOUR WEBSITE
+                expirationYear: formData.get("expirationYear"), //EXPIRATION YEAR FROM YOUR WEBSITE
+                cardType: formData.get("cardType"), //CARD TYPE FROM YOUR WEBSITE
+            }
+        },
+        billTo: {
+            firstName: formData.get("firstName"), //BILLING FIRST NAME
+            lastName: formData.get("lastName"), //BILLING LAST NAME
+            company: formData.get("company"), //BILLING COMPANY
+            address1: formData.get("address1"), //BILLING ADDRESS
+            locality: formData.get("locality"), //CITY
+            administrativeArea: formData.get("administrativeArea"), //STATE/PROVINCE
+            postalCode: formData.get("postalCode"), //POSTAL CODE
+            country: formData.get("country"), //COUNTRY
+            email: formData.get("billingEmail"), //BILLING EMAIL
+            phoneNumber: formData.get("phoneNumber") //BILLING PHONE NUMBER
+        }
+    }
+
+    console.log(payload)
+    // return
+    await fetch("http://localhost:3000/subscribe-daily", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+    })
+})

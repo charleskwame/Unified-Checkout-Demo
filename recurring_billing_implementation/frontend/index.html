@@ -105,93 +105,89 @@
                 <div class="card-border"></div>
             </label>
         </div>
-<dialog id="payment-dialog" class="payment-dialog">
-    <form method="dialog" id="payment-form" class="payment-form">
-        <h2>Enter Payment Information</h2>
-        <section class="form-section">
-            <h3>Buyer Information</h3>
-            <label>
-                <span>Merchant Customer ID</span>
-                <input type="text" name="merchantCustomerID" required />
-            </label>
-            <label>
-                <span>Email</span>
-                <input type="email" name="buyerEmail" required />
-            </label>
-        </section>
-        <section class="form-section">
-            <h3>Client Reference</h3>
-            <label>
-                <span>Reference Code</span>
-                <input type="text" name="clientReferenceCode" required />
-            </label>
-        </section>
-        <section class="form-section">
-            <h3>Payment Information</h3>
-            <label>
-                <span>Card Number</span>
-                <input type="text" name="cardNumber" id="card-number" minlength="13" maxlength="19" required />
-            </label>
-            <label>
-                <span>Expiration Month</span>
-                <input type="text" name="expirationMonth" pattern="(0[1-9]|1[0-2])" placeholder="MM" required />
-            </label>
-            <label>
-                <span>Expiration Year</span>
-                <input type="text" name="expirationYear" pattern="\d{4}" placeholder="YYYY" required />
-            </label>
-            <input type="hidden" name="cardType" id="card-type" value="" />
-            <p class="card-type-display" id="card-type-display">Card Type: <span>Unknown</span></p>
-        </section>
-        <section class="form-section">
-            <h3>Billing Address</h3>
-            <label>
-                <span>First Name</span>
-                <input type="text" name="firstName" required />
-            </label>
-            <label>
-                <span>Last Name</span>
-                <input type="text" name="lastName" required />
-            </label>
-            <label>
-                <span>Company</span>
-                <input type="text" name="company" />
-            </label>
-            <label>
-                <span>Address</span>
-                <input type="text" name="address1" required />
-            </label>
-            <label>
-                <span>City</span>
-                <input type="text" name="locality" required />
-            </label>
-            <label>
-                <span>State / Province</span>
-                <input type="text" name="administrativeArea" required />
-            </label>
-            <label>
-                <span>Postal Code</span>
-                <input type="text" name="postalCode" required />
-            </label>
-            <label>
-                <span>Country (ISO 2)</span>
-                <input type="text" name="country" maxlength="2" required />
-            </label>
-            <label>
-                <span>Email</span>
-                <input type="email" name="billingEmail" required />
-            </label>
-            <label>
-                <span>Phone Number</span>
-                <input type="tel" name="phoneNumber" required />
-            </label>
-        </section>
-        <div class="dialog-actions">
-            <button type="submit" class="btn-primary">Pay</button>
-            <button type="button" class="btn-secondary" id="cancel-dialog">Cancel</button>
-        </div>
-    </form>
-</dialog>
+        <dialog id="payment-dialog" class="payment-dialog">
+            <form method="dialog" id="payment-form" class="payment-form">
+                <h2>Enter Payment Information</h2>
+                <section class="form-section">
+                    <h3>Buyer Information</h3>
+                    <label>
+                        <span>Merchant Customer ID</span>
+                        <input type="text" name="merchantCustomerID" required />
+                    </label>
+                    <label>
+                        <span>Email</span>
+                        <input type="email" name="buyerEmail" required />
+                    </label>
+                </section>
+                <section class="form-section">
+                    <h3>Client Reference</h3>
+                    <label>
+                        <span>Reference Code</span>
+                        <input type="text" name="clientReferenceCode" required />
+                    </label>
+                </section>
+                <section class="form-section">
+                    <h3>Payment Information</h3>
+                    <label>
+                        <span>Card Number</span>
+                        <input type="text" name="cardNumber" id="card-number" minlength="13" maxlength="19" required />
+                    </label>
+                    <label>
+                        <span>Expiration Month</span>
+                        <input type="text" name="expirationMonth" pattern="(0[1-9]|1[0-2])" placeholder="MM" required />
+                    </label>
+                    <label>
+                        <span>Expiration Year</span>
+                        <input type="text" name="expirationYear" pattern="\d{4}" placeholder="YYYY" required />
+                    </label>
+                    <input type="hidden" name="cardType" id="card-type" value="" />
+                    <p class="card-type-display" id="card-type-display">Card Type: <span>Unknown</span></p>
+                </section>
+                <section class="form-section">
+                    <h3>Billing Address</h3>
+                    <label>
+                        <span>First Name</span>
+                        <input type="text" name="firstName" required />
+                    </label>
+                    <label>
+                        <span>Last Name</span>
+                        <input type="text" name="lastName" required />
+                    </label>
+                    <label>
+                        <span>Company</span>
+                        <input type="text" name="company" />
+                    </label>
+                    <label>
+                        <span>Address</span>
+                        <input type="text" name="address1" required />
+                    </label>
+                    <label>
+                        <span>City</span>
+                        <input type="text" name="locality" required />
+                    </label>
+                    <label>
+                        <span>State / Province</span>
+                        <input type="text" name="administrativeArea" required />
+                    </label>
+                    <label>
+                        <span>Postal Code</span>
+                        <input type="text" name="postalCode" required />
+                    </label>
+                    <label>
+                        <span>Email</span>
+                        <input type="email" name="billingEmail" required />
+                    </label>
+                    <label>
+                        <span>Phone Number</span>
+                        <input type="tel" name="phoneNumber" required />
+                    </label>
+                </section>
+                <div class="dialog-actions">
+                    <button type="submit" class="btn-primary" id="subscribeButton">Subscribe</button>
+                    <button type="button" class="btn-secondary" id="cancel-dialog">Cancel</button>
+                </div>
+            </form>
+        </dialog>
         <div class="action-section">
             <button id="checkout-button" class="btn-primary">
                 Subscribe

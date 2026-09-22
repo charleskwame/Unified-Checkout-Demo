@@ -71,6 +71,8 @@ const createDailySubscription = async (req, res) => {
             });
         }
 
+        return res.json(req.body)
+
         const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
         const url = `https://${normalizedHost}${TOKEN_RESOURCE_PATH}`;
 
