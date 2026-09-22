@@ -63,7 +63,7 @@ const decodeJwtPayload = (token) => {
     }
 };
 
-const createToken = async (req, res) => {
+const createDailySubscription = async (req, res) => {
     try {
         if (!HOST || !MERCHANT_ID || !API_KEY_ID || !SHARED_SECRET) {
             return res.status(500).json({
@@ -217,7 +217,7 @@ const createToken = async (req, res) => {
     }
 };
 
-app.post("/token", createToken);
+app.post("/subscribe-daily", createDailySubscription);
 
 if (process.env.NODE_ENV !== "production") {
     const PORT = process.env.PORT || 3000;
