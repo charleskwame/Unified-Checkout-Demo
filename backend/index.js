@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
-const { ApiClient } = require("cybersource-rest-client");
+const { createHeaders } = require("cybersource-auth");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
 
@@ -36,24 +36,6 @@ const MERCHANT_ID = process.env.CYBERSOURCE_MERCHANT_ID;
 const API_KEY_ID = process.env.CYBERSOURCE_API_KEY_ID;
 const SHARED_SECRET = process.env.CYBERSOURCE_API_SECRET_KEY;
 const resourcePath = "/uc/v1/sessions";
-
-const createHeaders = (merchantId, host, httpMethod, requestPath, rawBody, keyId, secretKey) => {
-  const apiClient = new ApiClient();
-
-  apiClient.setConfiguration({
-    authenticationType: "http_signature",
-    merchantID: merchantId,
-    runEnvironment: host,
-    requestHost: host,
-    merchantKeyId: keyId,
-    merchantsecretKey: secretKey,
-    logConfiguration: {
-      enableLog: false,
-    },
-  });
-
-  return apiClient.callAuthenticationHeader(httpMethod, requestPath, rawBody, {}, false);
-};
 
 const decodeJwtPayload = (token) => {
   try {
