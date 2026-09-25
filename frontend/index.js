@@ -106,6 +106,7 @@ const startWithVAS = async (captureContext) => {
       });
 
       console.log("Payment result response:", response);
+      return;
 
       if (response.data?.decoded?.status === "AUTHORIZED") {
         alert("Your payment was successful. Your payment id is: " + response.data.decoded.id + " This is a test transaction. Thank you");
