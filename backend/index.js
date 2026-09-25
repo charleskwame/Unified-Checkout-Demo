@@ -246,6 +246,12 @@ const activateRecurringBilling = async (req, res) => {
     //   subscriptionData,
     // });
 
+    return res.status(200).json({
+      success: true,
+      transactionId,
+      subscriptionData,
+    });
+
     const response = await axios.post(
       `https://${normalizedHost}/rbs/v1/subscriptions/follow-ons/${transactionId}`,
       JSON.stringify(subscriptionData),
