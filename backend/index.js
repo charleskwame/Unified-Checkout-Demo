@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
-const { ApiClient } = require("cybersource-rest-client");
+const { createHeaders } = require("cybersource-auth");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
 
@@ -36,24 +36,6 @@ const MERCHANT_ID = process.env.CYBERSOURCE_MERCHANT_ID;
 const API_KEY_ID = process.env.CYBERSOURCE_API_KEY_ID;
 const SHARED_SECRET = process.env.CYBERSOURCE_API_SECRET_KEY;
 const resourcePath = "/uc/v1/sessions";
-
-const createHeaders = (merchantId, host, httpMethod, requestPath, rawBody, keyId, secretKey) => {
-  const apiClient = new ApiClient();
-
-  apiClient.setConfiguration({
-    authenticationType: "http_signature",
-    merchantID: merchantId,
-    runEnvironment: host,
-    requestHost: host,
-    merchantKeyId: keyId,
-    merchantsecretKey: secretKey,
-    logConfiguration: {
-      enableLog: false,
-    },
-  });
-
-  return apiClient.callAuthenticationHeader(httpMethod, requestPath, rawBody, {}, false);
-};
 
 const decodeJwtPayload = (token) => {
   try {
@@ -261,31 +243,7 @@ const verifyPaymentResult = async (req, res) => {
 
 const activateRecurringBilling = async (req, res) => {
   try {
-    // const { transactionResponse } = req.body;
-
-    // if (!transactionResponse) {
-    //   return res.status(400).json({
-    //     error: "transactionResponse JWT is required",
-    //   });
-    // }
-
     const decoded = decodeJwtPayload(req.body?.result);
-    // return res.status(200).json({
-    //   success: true,
-    //   result: req.body?.result,
-    // });
-
-    // console.log("Decoded transaction response:", decoded);
-
-    // return res.status(200).json({
-    //   success: true,
-    //   decoded,
-    // });
-
-    //we will post to recurring billing endpoint here in the future, but for now we will just return the decoded response
-    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
-
-    const transactionId = decoded?.id;
 
     const transactionId = decoded?.id;
 
@@ -310,16 +268,31 @@ const activateRecurringBilling = async (req, res) => {
     };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     // return res.status(200).json({
     //   success: true,
     //   transactionId,
     //   subscriptionData,
     // });
+=======
+    const rawBody = JSON.stringify(subscriptionData);
+>>>>>>> 2c41376bfa932bca57b8a035f42b810c2ed848a8
 
-    return res.status(200).json({
-      success: true,
-      transactionId,
-      subscriptionData,
+    const transactionId = decoded?.id;
+
+    if (!transactionId) {
+      return res.status(400).json({
+        error: "Transaction ID is missing from the decoded result",
+      });
+    }
+
+    const resourcePath = `/rbs/v1/subscriptions/follow-ons/${transactionId}`;
+
+    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+
+    const response = await axios.post(`https://${normalizedHost}${resourcePath}`, rawBody, {
+      headers,
+      timeout: 10000,
     });
 =======
     const rawBody = JSON.stringify(subscriptionData);
@@ -329,15 +302,6 @@ const activateRecurringBilling = async (req, res) => {
 
     const response = await axios.post(`https://${normalizedHost}${followOnPath}`, rawBody, { headers, timeout: 10000 });
 >>>>>>> 4205392 (still reworking 02)
-
-    const response = await axios.post(
-      `https://${normalizedHost}/rbs/v1/subscriptions/follow-ons/${transactionId}`,
-      JSON.stringify(subscriptionData),
-      {
-        headers,
-        timeout: 10000,
-      },
-    );
 
     return res.status(200).json({
       success: true,
@@ -357,6 +321,8 @@ app.post("/activate-recurring-billing", activateRecurringBilling);
 app.post("/checkout-session", createCheckoutSession);
 
 app.post("/verify-payment", verifyPaymentResult);
+
+console.log(`Backend server started at ${new Date().toISOString()}`);
 
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 3000;
