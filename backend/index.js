@@ -253,9 +253,6 @@ const activateRecurringBilling = async (req, res) => {
       });
     }
 
-    // ✅ Correct path for this request
-    const followOnPath = `/rbs/v1/subscriptions/follow-ons/${transactionId}`;
-
     const subscriptionData = {
       clientReferenceInformation: {
         code: `subscription_${Date.now()}`,
@@ -267,18 +264,7 @@ const activateRecurringBilling = async (req, res) => {
       },
     };
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    // return res.status(200).json({
-    //   success: true,
-    //   transactionId,
-    //   subscriptionData,
-    // });
-=======
     const rawBody = JSON.stringify(subscriptionData);
->>>>>>> 2c41376bfa932bca57b8a035f42b810c2ed848a8
-
-    const transactionId = decoded?.id;
 
     if (!transactionId) {
       return res.status(400).json({
@@ -294,14 +280,6 @@ const activateRecurringBilling = async (req, res) => {
       headers,
       timeout: 10000,
     });
-=======
-    const rawBody = JSON.stringify(subscriptionData);
-
-    // ✅ Pass followOnPath, not the global resourcePath
-    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", followOnPath, rawBody, API_KEY_ID, SHARED_SECRET);
-
-    const response = await axios.post(`https://${normalizedHost}${followOnPath}`, rawBody, { headers, timeout: 10000 });
->>>>>>> 4205392 (still reworking 02)
 
     return res.status(200).json({
       success: true,

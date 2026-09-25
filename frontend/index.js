@@ -6,9 +6,6 @@ const paymentPayload = {
   clientVersion: "1.0",
   country: "US",
   locale: "en_US",
-  // completeMandate: {
-  //   type: "CAPTURE",
-  // },
   data: {
     orderInformation: {
       amountDetails: {
@@ -99,25 +96,11 @@ const startWithVAS = async (captureContext) => {
     console.log(result);
 
     if (result) {
-      // const response = await axios.post("https://unified-checkout-backend.vercel.app/verify-payment", { completeResponse: result });
-
       const response = await axios.post("https://unified-checkout-backend.vercel.app/activate-recurring-billing", {
         result,
       });
 
       console.log("Payment result response:", response);
-      // return;
-
-      // if (response.data?.decoded?.status === "AUTHORIZED") {
-      //   alert("Your payment was successful. Your payment id is: " + response.data.decoded.id + " This is a test transaction. Thank you");
-      // }
-
-      // if (response.status === 200) {
-      //   console.log(response);
-      // } else {
-      //   console.log("Payment Processing Failed");
-      // }
-
       console.log("Subscription result response:", response.data);
     } else {
       throw new Error("Unified Checkout returned no payment result.");
