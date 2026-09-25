@@ -2,7 +2,9 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
-const CyberSource = require("cybersource-rest-client");
+const { createHeaders } = require("cybersource-auth");
+const jwt = require("jsonwebtoken");
+const axios = require("axios");
 
 const app = express();
 const allowedOrigins = [
@@ -33,6 +35,7 @@ const HOST = process.env.CYBERSOURCE_HOST;
 const MERCHANT_ID = process.env.CYBERSOURCE_MERCHANT_ID;
 const API_KEY_ID = process.env.CYBERSOURCE_API_KEY_ID;
 const SHARED_SECRET = process.env.CYBERSOURCE_API_SECRET_KEY;
+const resourcePath = "/uc/v1/sessions";
 
 const decodeJwtPayload = (token) => {
   try {
@@ -57,33 +60,7 @@ const decodeJwtPayload = (token) => {
   }
 };
 
-const normalizedHost = HOST ? HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "") : "";
-
-const createCyberSourceConfig = () => ({
-  authenticationType: "jwt",
-  jwtKeyType: "SHARED_SECRET",
-  merchantID: MERCHANT_ID,
-  runEnvironment: normalizedHost,
-  merchantKeyId: API_KEY_ID,
-  merchantsecretKey: SHARED_SECRET,
-  enableLog: false,
-});
-
-const callCyberSource = (invoke) =>
-  new Promise((resolve, reject) => {
-    invoke((error, data, response) => {
-      if (error) {
-        const sdkError = new Error(typeof error === "string" ? error : error.message || "CyberSource SDK request failed");
-        sdkError.status = response?.statusCode || response?.status;
-        sdkError.details = error;
-        sdkError.response = response;
-        reject(sdkError);
-        return;
-      }
-
-      resolve(data);
-    });
-  });
+const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
 
 const createCheckoutSession = async (req, res) => {
   try {
@@ -92,6 +69,8 @@ const createCheckoutSession = async (req, res) => {
         error: "CyberSource environment variables are not fully configured.",
       });
     }
+
+    const url = `https://${normalizedHost}${resourcePath}`;
 
     const rawPayload = req.body?.payload && typeof req.body.payload === "object" ? req.body.payload : req.body;
     const payload = normalizeCheckoutPayload(rawPayload);
@@ -105,28 +84,30 @@ const createCheckoutSession = async (req, res) => {
       });
     }
 
-    const captureContextRequest = CyberSource.GenerateUnifiedCheckoutV1CaptureContextRequest.constructFromObject(payload);
-    const captureContextApi = new CyberSource.UnifiedCheckoutV1CaptureContextApi(createCyberSourceConfig());
-    const captureContext = await callCyberSource((callback) =>
-      captureContextApi.generateUnifiedCheckoutV1CaptureContext(captureContextRequest, callback),
-    );
+    const rawBody = JSON.stringify(payload);
+
+    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+
+    const response = await axios.post(url, payload, { headers, timeout: 10000 });
+
+    const captureContext = response.data;
 
     if (!captureContext) {
       return res.status(500).json({
         error: "CyberSource returned a 200 response, but no Capture Context token was generated.",
-        rawResponse: captureContext,
+        responseHeaders: response.headers,
+        rawResponse: response.data,
       });
     }
 
     return res.json(captureContext);
   } catch (error) {
-    const details = error.details || error.response?.data;
-    console.error("CyberSource API Error:", details || error.message);
+    console.error("CyberSource API Error:", error.response?.data || error.message);
 
-    if (error.status || error.response) {
-      return res.status(error.status || error.response.status).json({
-        error: details?.message || error.message || "CyberSource request failed",
-        details,
+    if (error.response) {
+      return res.status(error.response.status).json({
+        error: error.response.data?.message || "CyberSource request failed",
+        details: error.response.data,
       });
     }
 
@@ -236,6 +217,8 @@ const activateRecurringBilling = async (req, res) => {
       },
     };
 
+    const rawBody = JSON.stringify(subscriptionData);
+
     const transactionId = decoded?.id;
 
     if (!transactionId) {
@@ -244,23 +227,24 @@ const activateRecurringBilling = async (req, res) => {
       });
     }
 
-    const subscriptionRequest = CyberSource.CreateSubscriptionRequest1.constructFromObject(subscriptionData);
-    const subscriptionsApi = new CyberSource.SubscriptionsFollowOnsApi(createCyberSourceConfig());
-    const subscriptionResponse = await callCyberSource((callback) =>
-      subscriptionsApi.createFollowOnSubscription(transactionId, subscriptionRequest, callback),
-    );
+    const resourcePath = `/rbs/v1/subscriptions/follow-ons/${transactionId}`;
+
+    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+
+    const response = await axios.post(`https://${normalizedHost}${resourcePath}`, rawBody, {
+      headers,
+      timeout: 10000,
+    });
 
     return res.status(200).json({
       success: true,
-      response: subscriptionResponse,
+      response: response?.data,
     });
   } catch (error) {
-    const details = error.details || error.response?.data;
-    console.error("Recurring billing error:", details || error.message);
+    console.error("Recurring billing error:", error);
 
-    return res.status(error.status || error.response?.status || 500).json({
-      error: details?.message || error.message || "Failed to process recurring billing",
-      details,
+    return res.status(500).json({
+      error: "Failed to process recurring billing",
     });
   }
 };
