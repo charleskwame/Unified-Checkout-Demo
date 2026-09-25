@@ -99,7 +99,13 @@ const startWithVAS = async (captureContext) => {
     console.log(result);
 
     if (result) {
-      const response = await axios.post("https://unified-checkout-backend.vercel.app/verify-payment", { completeResponse: result });
+      // const response = await axios.post("https://unified-checkout-backend.vercel.app/verify-payment", { completeResponse: result });
+
+      const response = await axios.post("https://unified-checkout-backend.vercel.app/activate-recurring-billing", {
+        transactionResponse: result,
+      });
+
+      console.log("Payment result response:", response);
 
       if (response.data?.decoded?.status === "AUTHORIZED") {
         alert("Your payment was successful. Your payment id is: " + response.data.decoded.id + " This is a test transaction. Thank you");

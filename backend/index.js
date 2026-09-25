@@ -201,6 +201,37 @@ const verifyPaymentResult = async (req, res) => {
   }
 };
 
+const activateRecurringBilling = async (req, res) => {
+  try {
+    const { transactionResponse } = req.body;
+
+    if (!transactionResponse) {
+      return res.status(400).json({
+        error: "transactionResponse JWT is required",
+      });
+    }
+
+    const decoded = decodeJwtPayload(transactionResponse);
+
+    console.log("Decoded transaction response:", decoded);
+
+    return res.status(200).json({
+      success: true,
+      decoded,
+    });
+
+    //we will post to recurring billing endpoint here in the future, but for now we will just return the decoded response
+  } catch (error) {
+    console.error("Recurring billing error:", error);
+
+    return res.status(500).json({
+      error: "Failed to process recurring billing",
+    });
+  }
+};
+
+app.post("/activate-recurring-billing", activateRecurringBilling);
+
 app.post("/checkout-session", createCheckoutSession);
 
 app.post("/verify-payment", verifyPaymentResult);
