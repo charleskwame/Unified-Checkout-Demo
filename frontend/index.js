@@ -12,7 +12,7 @@ const paymentPayload = {
   data: {
     orderInformation: {
       amountDetails: {
-        totalAmount: "20.00",
+        totalAmount: "50.00",
         currency: "USD",
       },
     },
@@ -105,9 +105,18 @@ const startWithVAS = async (captureContext) => {
         transactionResponse: result,
       });
 
-      console.log("Payment result response:", response.data);
+      console.log("Payment result response:", response);
       return;
-      // alert(`Payment successful. Recurring billing activated for request ${response.data?.followOnRequestId || "the payment"}.`);
+
+      if (response.data?.decoded?.status === "AUTHORIZED") {
+        alert("Your payment was successful. Your payment id is: " + response.data.decoded.id + " This is a test transaction. Thank you");
+      }
+
+      if (response.status === 200) {
+        console.log(response);
+      } else {
+        console.log("Payment Processing Failed");
+      }
     } else {
       throw new Error("Unified Checkout returned no payment result.");
     }
@@ -198,10 +207,7 @@ const getSessionContext = async (event) => {
       console.error("Backend error:", backendError);
     }
 
-    const backendMessage = error?.response?.data?.error;
-    alert(
-      backendMessage ? `Recurring billing failed: ${backendMessage}` : "Unable to initialize payment. Please check the browser console for details.",
-    );
+    alert("Unable to initialize payment. Please check the browser console for details.");
   }
 
   isProcessing = false;
