@@ -203,15 +203,19 @@ const verifyPaymentResult = async (req, res) => {
 
 const activateRecurringBilling = async (req, res) => {
   try {
-    const { transactionResponse } = req.body;
+    // const { transactionResponse } = req.body;
 
-    if (!transactionResponse) {
-      return res.status(400).json({
-        error: "transactionResponse JWT is required",
-      });
-    }
+    // if (!transactionResponse) {
+    //   return res.status(400).json({
+    //     error: "transactionResponse JWT is required",
+    //   });
+    // }
 
-    const decoded = decodeJwtPayload(transactionResponse);
+    // const decoded = decodeJwtPayload(req.body?.result);
+    return res.status(200).json({
+      success: true,
+      result: req.body?.result,
+    });
 
     // console.log("Decoded transaction response:", decoded);
 

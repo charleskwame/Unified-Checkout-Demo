@@ -102,7 +102,7 @@ const startWithVAS = async (captureContext) => {
       // const response = await axios.post("https://unified-checkout-backend.vercel.app/verify-payment", { completeResponse: result });
 
       const response = await axios.post("https://unified-checkout-backend.vercel.app/activate-recurring-billing", {
-        transactionResponse: result,
+        result,
       });
 
       console.log("Payment result response:", response);
