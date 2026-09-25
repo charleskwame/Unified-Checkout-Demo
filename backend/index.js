@@ -225,6 +225,11 @@ const activateRecurringBilling = async (req, res) => {
 
     const transactionId = decoded?.id;
 
+    return res.status(200).json({
+      success: true,
+      transactionId,
+    });
+
     const subscriptionData = {
       clientReferenceInformation: {
         code: `subscription_${Date.now()}`,
