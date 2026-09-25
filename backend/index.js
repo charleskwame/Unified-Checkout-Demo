@@ -310,6 +310,12 @@ const activateRecurringBilling = async (req, res) => {
       },
     };
 
+    return res.status(200).json({
+      success: true,
+      followOnRequestId,
+      subscriptionData,
+    });
+
     const rawBody = JSON.stringify(subscriptionData);
     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
     const response = await axios.post(`https://${normalizedHost}${resourcePath}`, subscriptionData, {
