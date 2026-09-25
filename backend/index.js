@@ -306,7 +306,7 @@ const activateRecurringBilling = async (req, res) => {
       subscriptionInformation: {
         planId: "7896588237846374604803",
         name: "Daily 20 Test",
-        startDate: new Date().toISOString().slice(0, 10),
+        startDate: `${new Date().toISOString()}`,
       },
     };
 
