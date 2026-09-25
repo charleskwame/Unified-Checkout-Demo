@@ -105,8 +105,9 @@ const startWithVAS = async (captureContext) => {
         transactionResponse: result,
       });
 
-      console.log("Payment result response:", response);
-      alert(`Payment successful. Recurring billing activated for request ${response.data?.followOnRequestId || "the payment"}.`);
+      console.log("Payment result response:", response.data);
+      return;
+      // alert(`Payment successful. Recurring billing activated for request ${response.data?.followOnRequestId || "the payment"}.`);
     } else {
       throw new Error("Unified Checkout returned no payment result.");
     }
