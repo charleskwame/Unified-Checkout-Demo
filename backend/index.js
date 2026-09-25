@@ -284,6 +284,8 @@ const activateRecurringBilling = async (req, res) => {
     const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
     const followOnRequestId = findFollowOnRequestId(decoded) || decoded.id;
 
+    console.log("Activating recurring billing for request ID:", followOnRequestId);
+
     if (!followOnRequestId) {
       return res.status(400).json({
         error: "Payment result does not contain a follow-up request ID.",
@@ -304,7 +306,7 @@ const activateRecurringBilling = async (req, res) => {
       subscriptionInformation: {
         planId: "7896588237846374604803",
         name: "Daily 20 Test",
-        startDate: `${new Date().toISOString()}`,
+        startDate: new Date().toISOString().slice(0, 10),
       },
     };
 
@@ -321,10 +323,13 @@ const activateRecurringBilling = async (req, res) => {
       response: response?.data,
     });
   } catch (error) {
-    console.error("Recurring billing error:", error);
+    const upstreamStatus = error.response?.status;
+    const upstreamData = error.response?.data;
+    console.error("Recurring billing error:", upstreamStatus || error.message, upstreamData || "");
 
-    return res.status(500).json({
-      error: "Failed to process recurring billing",
+    return res.status(upstreamStatus || 500).json({
+      error: upstreamData?.message || "Failed to process recurring billing",
+      details: upstreamData || error.message,
     });
   }
 };
