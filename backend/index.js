@@ -202,9 +202,59 @@ const verifyPaymentResult = async (req, res) => {
   }
 };
 
+// const activateRecurringBilling = async (req, res) => {
+//   try {
+//     const decoded = decodeJwtPayload(req.body?.result);
+
+//     const subscriptionData = {
+//       clientReferenceInformation: {
+//         code: `subscription_${Date.now()}`,
+//       },
+//       subscriptionInformation: {
+//         planId: "7896588237846374604803",
+//         name: "Daily 20 Test",
+//         startDate: `${new Date().toISOString()}`,
+//       },
+//     };
+
+//     const rawBody = JSON.stringify(subscriptionData);
+//     //we will post to recurring billing endpoint here in the future, but for now we will just return the decoded response
+//     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+
+//     const transactionId = decoded?.id;
+
+//     const response = await axios.post(`https://${normalizedHost}/rbs/v1/subscriptions/follow-ons/${transactionId}`, rawBody, {
+//       headers,
+//       timeout: 10000,
+//     });
+
+//     return res.status(200).json({
+//       success: true,
+//       response: response?.data,
+//     });
+//   } catch (error) {
+//     console.error("Recurring billing error:", error);
+
+//     return res.status(500).json({
+//       error: "Failed to process recurring billing",
+//     });
+//   }
+// };
+
 const activateRecurringBilling = async (req, res) => {
   try {
     const decoded = decodeJwtPayload(req.body?.result);
+
+    const transactionId = decoded?.id;
+
+    if (!transactionId) {
+      return res.status(400).json({
+        error: "Transaction ID is missing from the decoded result",
+      });
+    }
+
+    // ✅ Correct path for this request
+    const followOnPath = `/rbs/v1/subscriptions/follow-ons/${transactionId}`;
 
     const subscriptionData = {
       clientReferenceInformation: {
@@ -217,7 +267,16 @@ const activateRecurringBilling = async (req, res) => {
       },
     };
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+    // return res.status(200).json({
+    //   success: true,
+    //   transactionId,
+    //   subscriptionData,
+    // });
+=======
     const rawBody = JSON.stringify(subscriptionData);
+>>>>>>> 2c41376bfa932bca57b8a035f42b810c2ed848a8
 
     const transactionId = decoded?.id;
 
@@ -235,16 +294,24 @@ const activateRecurringBilling = async (req, res) => {
       headers,
       timeout: 10000,
     });
+=======
+    const rawBody = JSON.stringify(subscriptionData);
+
+    // ✅ Pass followOnPath, not the global resourcePath
+    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", followOnPath, rawBody, API_KEY_ID, SHARED_SECRET);
+
+    const response = await axios.post(`https://${normalizedHost}${followOnPath}`, rawBody, { headers, timeout: 10000 });
+>>>>>>> 4205392 (still reworking 02)
 
     return res.status(200).json({
       success: true,
       response: response?.data,
     });
   } catch (error) {
-    console.error("Recurring billing error:", error);
-
+    console.error("Recurring billing error:", error.response?.data || error.message);
     return res.status(500).json({
       error: "Failed to process recurring billing",
+      details: error.response?.data ?? null,
     });
   }
 };
