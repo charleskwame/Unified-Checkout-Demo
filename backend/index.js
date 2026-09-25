@@ -211,11 +211,11 @@ const activateRecurringBilling = async (req, res) => {
     //   });
     // }
 
-    // const decoded = decodeJwtPayload(req.body?.result);
-    return res.status(200).json({
-      success: true,
-      result: req.body?.result,
-    });
+    const decoded = decodeJwtPayload(req.body?.result);
+    // return res.status(200).json({
+    //   success: true,
+    //   result: req.body?.result,
+    // });
 
     // console.log("Decoded transaction response:", decoded);
 
@@ -240,11 +240,11 @@ const activateRecurringBilling = async (req, res) => {
       },
     };
 
-    return res.status(200).json({
-      success: true,
-      transactionId,
-      subscriptionData,
-    });
+    // return res.status(200).json({
+    //   success: true,
+    //   transactionId,
+    //   subscriptionData,
+    // });
 
     const response = await axios.post(
       `https://${normalizedHost}/rbs/v1/subscriptions/follow-ons/${transactionId}`,
