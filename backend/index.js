@@ -202,45 +202,6 @@ const verifyPaymentResult = async (req, res) => {
   }
 };
 
-// const activateRecurringBilling = async (req, res) => {
-//   try {
-//     const decoded = decodeJwtPayload(req.body?.result);
-
-//     const subscriptionData = {
-//       clientReferenceInformation: {
-//         code: `subscription_${Date.now()}`,
-//       },
-//       subscriptionInformation: {
-//         planId: "7896588237846374604803",
-//         name: "Daily 20 Test",
-//         startDate: `${new Date().toISOString()}`,
-//       },
-//     };
-
-//     const rawBody = JSON.stringify(subscriptionData);
-//     //we will post to recurring billing endpoint here in the future, but for now we will just return the decoded response
-//     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
-
-//     const transactionId = decoded?.id;
-
-//     const response = await axios.post(`https://${normalizedHost}/rbs/v1/subscriptions/follow-ons/${transactionId}`, rawBody, {
-//       headers,
-//       timeout: 10000,
-//     });
-
-//     return res.status(200).json({
-//       success: true,
-//       response: response?.data,
-//     });
-//   } catch (error) {
-//     console.error("Recurring billing error:", error);
-
-//     return res.status(500).json({
-//       error: "Failed to process recurring billing",
-//     });
-//   }
-// };
-
 const activateRecurringBilling = async (req, res) => {
   try {
     const decoded = decodeJwtPayload(req.body?.result);
@@ -277,7 +238,10 @@ const activateRecurringBilling = async (req, res) => {
     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
 
     const response = await axios.post(`https://${normalizedHost}${resourcePath}`, rawBody, {
-      headers,
+      headers: {
+        ...headers,
+        "Content-Type": "application/json",
+      },
       timeout: 10000,
     });
 
@@ -310,53 +274,3 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 module.exports = app;
-
-// {
-//   "metadata": {
-//     "ccJti": "c2wjhGwEUZPcWRgN",
-//     "ttJti": "1E5RN0D7U0ZA3OONWAMFH1AD2YZZA4BTJWNPLAQOUBF3FD7H5ZEF6AB683C926B9"
-//   },
-//   "details": {
-//     "clientReferenceInformation": {
-//       "code": "1790345237572"
-//     },
-//     "consumerAuthenticationInformation": {
-//       "eci": "05",
-//       "ecommerceIndicator": "vbv"
-//     },
-//     "orderInformation": {
-//       "amountDetails": {
-//         "authorizedAmount": "50.00",
-//         "currency": "USD",
-//         "totalAmount": "50.00"
-//       }
-//     },
-//     "paymentAccountInformation": {
-//       "card": {
-//         "type": "001"
-//       }
-//     },
-//     "paymentInformation": {
-//       "card": {
-//         "type": "001"
-//       },
-//       "tokenizedCard": {
-//         "type": "001"
-//       }
-//     },
-//     "processorInformation": {
-//       "approvalCode": "681826",
-//       "networkTransactionId": "016153570198200",
-//       "responseCode": "00",
-//       "retrievalReferenceNumber": "626814091071",
-//       "systemTraceAuditNumber": "091071",
-//       "transactionId": "016153570198200"
-//     },
-//     "reconciliationId": "7903452863176907004011",
-//     "submitTimeUtc": "2026-09-25T14:08:06Z"
-//   },
-//   "id": "7903452863176907004011",
-//   "message": "Request processed successfully.",
-//   "outcome": "AUTHORIZED",
-//   "status": "AUTHORIZED"
-// }
