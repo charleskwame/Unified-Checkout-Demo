@@ -221,7 +221,31 @@ const verifyPaymentResult = async (req, res) => {
 
 const activateRecurringBilling = async (req, res) => {
   try {
+    // const { transactionResponse } = req.body;
+
+    // if (!transactionResponse) {
+    //   return res.status(400).json({
+    //     error: "transactionResponse JWT is required",
+    //   });
+    // }
+
     const decoded = decodeJwtPayload(req.body?.result);
+    // return res.status(200).json({
+    //   success: true,
+    //   result: req.body?.result,
+    // });
+
+    // console.log("Decoded transaction response:", decoded);
+
+    // return res.status(200).json({
+    //   success: true,
+    //   decoded,
+    // });
+
+    //we will post to recurring billing endpoint here in the future, but for now we will just return the decoded response
+    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+
+    const transactionId = decoded?.id;
 
     const subscriptionData = {
       clientReferenceInformation: {
@@ -234,16 +258,26 @@ const activateRecurringBilling = async (req, res) => {
       },
     };
 
-    const rawBody = JSON.stringify(subscriptionData);
-    //we will post to recurring billing endpoint here in the future, but for now we will just return the decoded response
-    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+    // return res.status(200).json({
+    //   success: true,
+    //   transactionId,
+    //   subscriptionData,
+    // });
 
-    const transactionId = decoded?.id;
-
-    const response = await axios.post(`https://${normalizedHost}/rbs/v1/subscriptions/follow-ons/${transactionId}`, rawBody, {
-      headers,
-      timeout: 10000,
+    return res.status(200).json({
+      success: true,
+      transactionId,
+      subscriptionData,
     });
+
+    const response = await axios.post(
+      `https://${normalizedHost}/rbs/v1/subscriptions/follow-ons/${transactionId}`,
+      JSON.stringify(subscriptionData),
+      {
+        headers,
+        timeout: 10000,
+      },
+    );
 
     return res.status(200).json({
       success: true,
