@@ -221,14 +221,14 @@ const activateRecurringBilling = async (req, res) => {
     // });
 
     //we will post to recurring billing endpoint here in the future, but for now we will just return the decoded response
-    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", "/rbs/v1/subscriptions/follow-ons/", rawBody, API_KEY_ID, SHARED_SECRET);
 
     const transactionId = decoded?.id;
 
-    return res.status(200).json({
-      success: true,
-      transactionId,
-    });
+    // return res.status(200).json({
+    //   success: true,
+    //   transactionId,
+    // });
 
     const subscriptionData = {
       clientReferenceInformation: {
