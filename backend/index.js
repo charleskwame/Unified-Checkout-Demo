@@ -78,6 +78,8 @@ const decodeJwtPayload = (token) => {
   }
 };
 
+const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+
 const createCheckoutSession = async (req, res) => {
   try {
     if (!HOST || !MERCHANT_ID || !API_KEY_ID || !SHARED_SECRET) {
@@ -86,7 +88,6 @@ const createCheckoutSession = async (req, res) => {
       });
     }
 
-    const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
     const url = `https://${normalizedHost}${resourcePath}`;
 
     const rawPayload = req.body?.payload && typeof req.body.payload === "object" ? req.body.payload : req.body;
@@ -219,6 +220,45 @@ const verifyPaymentResult = async (req, res) => {
   }
 };
 
+// const activateRecurringBilling = async (req, res) => {
+//   try {
+//     const decoded = decodeJwtPayload(req.body?.result);
+
+//     const subscriptionData = {
+//       clientReferenceInformation: {
+//         code: `subscription_${Date.now()}`,
+//       },
+//       subscriptionInformation: {
+//         planId: "7896588237846374604803",
+//         name: "Daily 20 Test",
+//         startDate: `${new Date().toISOString()}`,
+//       },
+//     };
+
+//     const rawBody = JSON.stringify(subscriptionData);
+//     //we will post to recurring billing endpoint here in the future, but for now we will just return the decoded response
+//     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+
+//     const transactionId = decoded?.id;
+
+//     const response = await axios.post(`https://${normalizedHost}/rbs/v1/subscriptions/follow-ons/${transactionId}`, rawBody, {
+//       headers,
+//       timeout: 10000,
+//     });
+
+//     return res.status(200).json({
+//       success: true,
+//       response: response?.data,
+//     });
+//   } catch (error) {
+//     console.error("Recurring billing error:", error);
+
+//     return res.status(500).json({
+//       error: "Failed to process recurring billing",
+//     });
+//   }
+// };
+
 const activateRecurringBilling = async (req, res) => {
   try {
     // const { transactionResponse } = req.body;
@@ -247,6 +287,17 @@ const activateRecurringBilling = async (req, res) => {
 
     const transactionId = decoded?.id;
 
+    const transactionId = decoded?.id;
+
+    if (!transactionId) {
+      return res.status(400).json({
+        error: "Transaction ID is missing from the decoded result",
+      });
+    }
+
+    // ✅ Correct path for this request
+    const followOnPath = `/rbs/v1/subscriptions/follow-ons/${transactionId}`;
+
     const subscriptionData = {
       clientReferenceInformation: {
         code: `subscription_${Date.now()}`,
@@ -258,6 +309,7 @@ const activateRecurringBilling = async (req, res) => {
       },
     };
 
+<<<<<<< HEAD
     // return res.status(200).json({
     //   success: true,
     //   transactionId,
@@ -269,6 +321,14 @@ const activateRecurringBilling = async (req, res) => {
       transactionId,
       subscriptionData,
     });
+=======
+    const rawBody = JSON.stringify(subscriptionData);
+
+    // ✅ Pass followOnPath, not the global resourcePath
+    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", followOnPath, rawBody, API_KEY_ID, SHARED_SECRET);
+
+    const response = await axios.post(`https://${normalizedHost}${followOnPath}`, rawBody, { headers, timeout: 10000 });
+>>>>>>> 4205392 (still reworking 02)
 
     const response = await axios.post(
       `https://${normalizedHost}/rbs/v1/subscriptions/follow-ons/${transactionId}`,
@@ -284,10 +344,10 @@ const activateRecurringBilling = async (req, res) => {
       response: response?.data,
     });
   } catch (error) {
-    console.error("Recurring billing error:", error);
-
+    console.error("Recurring billing error:", error.response?.data || error.message);
     return res.status(500).json({
       error: "Failed to process recurring billing",
+      details: error.response?.data ?? null,
     });
   }
 };
