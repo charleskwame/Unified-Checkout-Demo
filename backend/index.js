@@ -201,6 +201,55 @@ const verifyPaymentResult = async (req, res) => {
   }
 };
 
+const requestIdFromLink = (link) => {
+  if (typeof link !== "string" || !link.trim()) {
+    return null;
+  }
+
+  try {
+    const pathname = new URL(link, "https://cybersource.invalid").pathname;
+    const segments = pathname.split("/").filter(Boolean);
+    return segments.at(-1) || null;
+  } catch {
+    return null;
+  }
+};
+
+const findFollowOnRequestId = (value) => {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const requestId = findFollowOnRequestId(item);
+      if (requestId) return requestId;
+    }
+    return null;
+  }
+
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const relation = typeof value.rel === "string" ? value.rel.toLowerCase() : "";
+  for (const linkKey of ["href", "url", "link"]) {
+    const link = value[linkKey];
+    if (typeof link === "string" && (relation.includes("follow") || link.toLowerCase().includes("follow-on"))) {
+      const requestId = requestIdFromLink(link);
+      if (requestId) return requestId;
+    }
+  }
+
+  for (const [key, child] of Object.entries(value)) {
+    if (/(follow|followup|follow-on|follow_on)/i.test(key) && typeof child === "string") {
+      const requestId = requestIdFromLink(child);
+      if (requestId) return requestId;
+    }
+
+    const requestId = findFollowOnRequestId(child);
+    if (requestId) return requestId;
+  }
+
+  return null;
+};
+
 const activateRecurringBilling = async (req, res) => {
   try {
     const { transactionResponse } = req.body;
@@ -213,6 +262,12 @@ const activateRecurringBilling = async (req, res) => {
 
     const decoded = decodeJwtPayload(transactionResponse);
 
+    if (!decoded) {
+      return res.status(400).json({
+        error: "Unable to decode payment result JWT",
+      });
+    }
+
     // console.log("Decoded transaction response:", decoded);
 
     // return res.status(200).json({
@@ -220,10 +275,22 @@ const activateRecurringBilling = async (req, res) => {
     //   decoded,
     // });
 
-    //we will post to recurring billing endpoint here in the future, but for now we will just return the decoded response
-    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", "/rbs/v1/subscriptions/follow-ons/", rawBody, API_KEY_ID, SHARED_SECRET);
+    if (!HOST || !MERCHANT_ID || !API_KEY_ID || !SHARED_SECRET) {
+      return res.status(500).json({
+        error: "CyberSource environment variables are not fully configured.",
+      });
+    }
 
-    const transactionId = decoded?.id;
+    const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    const followOnRequestId = findFollowOnRequestId(decoded) || decoded.id;
+
+    if (!followOnRequestId) {
+      return res.status(400).json({
+        error: "Payment result does not contain a follow-up request ID.",
+      });
+    }
+
+    const resourcePath = `/rbs/v1/subscriptions/follow-ons/${followOnRequestId}`;
 
     // return res.status(200).json({
     //   success: true,
@@ -241,13 +308,16 @@ const activateRecurringBilling = async (req, res) => {
       },
     };
 
-    const response = await axios.post(`https://${normalizedHost}/rbs/v1/subscriptions/follow-ons/${transactionId}`, subscriptionData, {
+    const rawBody = JSON.stringify(subscriptionData);
+    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+    const response = await axios.post(`https://${normalizedHost}${resourcePath}`, subscriptionData, {
       headers,
       timeout: 10000,
     });
 
     return res.status(200).json({
       success: true,
+      followOnRequestId,
       response: response?.data,
     });
   } catch (error) {
