@@ -35,6 +35,7 @@ const HOST = process.env.CYBERSOURCE_HOST;
 const MERCHANT_ID = process.env.CYBERSOURCE_MERCHANT_ID;
 const API_KEY_ID = process.env.CYBERSOURCE_API_KEY_ID;
 const SHARED_SECRET = process.env.CYBERSOURCE_API_SECRET_KEY;
+const RECURRING_PLAN_ID = process.env.CYBERSOURCE_RECURRING_PLAN_ID;
 const resourcePath = "/uc/v1/sessions";
 
 const decodeJwtPayload = (token) => {
@@ -213,16 +214,22 @@ const activateRecurringBilling = async (req, res) => {
       });
     }
 
-    const startDateFormatted = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    if (!RECURRING_PLAN_ID) {
+      return res.status(500).json({
+        error: "CYBERSOURCE_RECURRING_PLAN_ID is not configured.",
+      });
+    }
+
+    // const startDateFormatted = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 
     const subscriptionData = {
       clientReferenceInformation: {
         code: `subscription_${Date.now()}`,
       },
       subscriptionInformation: {
-        planId: "7896588237846374604803",
+        planId: RECURRING_PLAN_ID,
         name: "Daily 20 Test",
-        startDate: startDateFormatted,
+        startDate: `${new Date().toISOString()}`,
       },
     };
 

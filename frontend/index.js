@@ -190,6 +190,7 @@ const getSessionContext = async (event) => {
 
     if (backendError) {
       console.error("Backend error:", backendError);
+      console.error("Backend error details:", JSON.stringify(backendError.details, null, 2));
     }
 
     alert("Unable to initialize payment. Please check the browser console for details.");
