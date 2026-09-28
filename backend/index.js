@@ -561,13 +561,217 @@ const verifyPaymentResult = async (req, res) => {
 // RECURRING BILLING
 // ============================================================
 
+// const activateRecurringBilling = async (req, res) => {
+//   try {
+//     console.log("===== RECURRING BILLING REQUEST =====");
+
+//     // --------------------------------------------------------
+//     // 1. Validate environment
+//     // --------------------------------------------------------
+
+//     const missingEnv = validateEnvironment();
+
+//     if (missingEnv.length > 0) {
+//       console.error("Missing environment variables:", missingEnv);
+
+//       return res.status(500).json({
+//         error: "CyberSource environment variables are not fully configured.",
+//         missing: missingEnv,
+//       });
+//     }
+
+//     // --------------------------------------------------------
+//     // 2. Validate incoming JWT
+//     // --------------------------------------------------------
+
+//     const result = req.body?.result;
+
+//     console.log("Has result:", !!result);
+//     console.log("Result length:", typeof result === "string" ? result.length : 0);
+
+//     if (!result) {
+//       return res.status(400).json({
+//         error: "Payment result JWT is required.",
+//       });
+//     }
+
+//     // const decoded = decodeJwtPayload(result);
+
+//     // if (!decoded) {
+//     //   return res.status(400).json({
+//     //     error: "Unable to decode payment result JWT.",
+//     //   });
+//     // }
+
+//     const decoded = decodeJwtPayload(result);
+
+//     if (!decoded) {
+//       return res.status(400).json({
+//         error: "Unable to decode payment result JWT.",
+//       });
+//     }
+
+//     console.log("Decoded payment result:", {
+//       id: decoded.id,
+//       status: decoded.status,
+//       reason: decoded.reason,
+//     });
+
+//     if (decoded.status !== "AUTHORIZED") {
+//       return res.status(400).json({
+//         error: "Payment was not successfully authorized.",
+//         paymentStatus: decoded.status,
+//         reason: decoded.reason ?? null,
+//       });
+//     }
+
+//     // IMPORTANT:
+//     // Don't log the complete JWT or sensitive payment data.
+//     console.log("Decoded payment result:", {
+//       id: decoded.id,
+//       status: decoded.status,
+//       reason: decoded.reason,
+//     });
+
+//     // --------------------------------------------------------
+//     // 3. Get transaction ID
+//     // --------------------------------------------------------
+
+//     const transactionId = decoded?.id;
+
+//     if (!transactionId) {
+//       return res.status(400).json({
+//         error: "Transaction ID is missing from the decoded result.",
+//       });
+//     }
+
+//     // --------------------------------------------------------
+//     // 4. Build subscription request
+//     // --------------------------------------------------------
+
+//     const subscriptionData = {
+//       clientReferenceInformation: {
+//         code: `subscription_${Date.now()}`,
+//       },
+
+//       subscriptionInformation: {
+//         planId: "7896588237846374604803",
+//         name: "Daily 20 Test",
+//         startDate: new Date().toISOString(),
+//       },
+//     };
+
+//     // IMPORTANT:
+//     // This exact body is used both for signing and
+//     // for the actual HTTP request.
+//     const rawBody = JSON.stringify(subscriptionData);
+
+//     // --------------------------------------------------------
+//     // 5. Build CyberSource resource path
+//     // --------------------------------------------------------
+
+//     const finalResourcePath = `${subscriptionResourcePath}/${transactionId}`;
+
+//     const url = `https://${normalizedHost}${finalResourcePath}`;
+
+//     console.log("CyberSource recurring request:", {
+//       host: normalizedHost,
+//       resourcePath: finalResourcePath,
+//       transactionId,
+//       url,
+//       merchantId: MERCHANT_ID,
+//       apiKeyId: API_KEY_ID,
+//       subscriptionResourcePath,
+//     });
+
+//     // --------------------------------------------------------
+//     // 6. Generate CyberSource HTTP Signature
+//     // --------------------------------------------------------
+
+//     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", finalResourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+
+//     // Don't expose authorization/signature in logs.
+//     console.log("Generated CyberSource headers:", {
+//       host: headers.host,
+//       date: headers.date,
+//       digest: headers.digest,
+//       requestTarget: headers["(request-target)"],
+//       hasAuthorization: !!headers.Authorization,
+//     });
+
+//     // --------------------------------------------------------
+//     // 7. Make CyberSource request
+//     // --------------------------------------------------------
+
+//     const response = await axios.post(url, rawBody, {
+//       headers: {
+//         ...headers,
+//         "Content-Type": "application/json",
+//       },
+
+//       timeout: 10000,
+//     });
+
+//     // --------------------------------------------------------
+//     // 8. Log successful response
+//     // --------------------------------------------------------
+
+//     console.log("CyberSource recurring billing response:", {
+//       status: response.status,
+//       data: response.data,
+//     });
+
+//     console.log("===== RECURRING BILLING SUCCESS =====");
+
+//     return res.status(200).json({
+//       success: true,
+//       response: response.data,
+//     });
+//   } catch (error) {
+//     // --------------------------------------------------------
+//     // IMPORTANT DEBUGGING INFORMATION
+//     // --------------------------------------------------------
+
+//     console.error("===== RECURRING BILLING ERROR =====");
+
+//     console.error("Message:", error.message);
+
+//     console.error("Code:", error.code);
+
+//     console.error("HTTP status:", error.response?.status);
+
+//     console.error("CyberSource response:", JSON.stringify(error.response?.data || null, null, 2));
+
+//     console.error("CyberSource response headers:", JSON.stringify(error.response?.headers || null, null, 2));
+
+//     console.error("Stack:", error.stack);
+
+//     console.error("====================================");
+
+//     // --------------------------------------------------------
+//     // Return CyberSource's actual HTTP status
+//     // --------------------------------------------------------
+
+//     const status = error.response?.status || 500;
+
+//     return res.status(status).json({
+//       error: "Failed to process recurring billing.",
+
+//       // Useful during deployment debugging.
+//       status,
+
+//       code: error.code || null,
+
+//       details: error.response?.data || null,
+
+//       message: error.response?.data?.message || error.message,
+//     });
+//   }
+// };
+
 const activateRecurringBilling = async (req, res) => {
   try {
     console.log("===== RECURRING BILLING REQUEST =====");
-
-    // --------------------------------------------------------
-    // 1. Validate environment
-    // --------------------------------------------------------
 
     const missingEnv = validateEnvironment();
 
@@ -579,10 +783,6 @@ const activateRecurringBilling = async (req, res) => {
         missing: missingEnv,
       });
     }
-
-    // --------------------------------------------------------
-    // 2. Validate incoming JWT
-    // --------------------------------------------------------
 
     const result = req.body?.result;
 
@@ -603,17 +803,22 @@ const activateRecurringBilling = async (req, res) => {
       });
     }
 
-    // IMPORTANT:
-    // Don't log the complete JWT or sensitive payment data.
     console.log("Decoded payment result:", {
       id: decoded.id,
       status: decoded.status,
       reason: decoded.reason,
     });
 
-    // --------------------------------------------------------
-    // 3. Get transaction ID
-    // --------------------------------------------------------
+    //
+    // Do not create a subscription from an invalid payment result.
+
+    IMPORTANT: if (decoded.status === "INVALID_REQUEST") {
+      return res.status(400).json({
+        error: "CyberSource payment result is INVALID_REQUEST.",
+        paymentStatus: decoded.status,
+        reason: decoded.reason ?? null,
+      });
+    }
 
     const transactionId = decoded?.id;
 
@@ -622,10 +827,6 @@ const activateRecurringBilling = async (req, res) => {
         error: "Transaction ID is missing from the decoded result.",
       });
     }
-
-    // --------------------------------------------------------
-    // 4. Build subscription request
-    // --------------------------------------------------------
 
     const subscriptionData = {
       clientReferenceInformation: {
@@ -639,15 +840,19 @@ const activateRecurringBilling = async (req, res) => {
       },
     };
 
-    // IMPORTANT:
-    // This exact body is used both for signing and
-    // for the actual HTTP request.
     const rawBody = JSON.stringify(subscriptionData);
 
-    // --------------------------------------------------------
-    // 5. Build CyberSource resource path
-    // --------------------------------------------------------
-
+    /*
+     * IMPORTANT:
+     *
+     * This should resolve to:
+     *
+     * /rbs/v1/subscriptions
+     *
+     * NOT:
+     *
+     * /rbs/v1/subscriptions/follow-ons
+     */
     const finalResourcePath = `${subscriptionResourcePath}/${transactionId}`;
 
     const url = `https://${normalizedHost}${finalResourcePath}`;
@@ -662,24 +867,23 @@ const activateRecurringBilling = async (req, res) => {
       subscriptionResourcePath,
     });
 
-    // --------------------------------------------------------
-    // 6. Generate CyberSource HTTP Signature
-    // --------------------------------------------------------
-
     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", finalResourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
 
-    // Don't expose authorization/signature in logs.
-    console.log("Generated CyberSource headers:", {
-      host: headers.host,
-      date: headers.date,
-      digest: headers.digest,
-      requestTarget: headers["(request-target)"],
-      hasAuthorization: !!headers.Authorization,
-    });
+    console.log("CyberSource header keys:", Object.keys(headers));
 
-    // --------------------------------------------------------
-    // 7. Make CyberSource request
-    // --------------------------------------------------------
+    const safeHeaders = Object.fromEntries(
+      Object.entries(headers).map(([key, value]) => {
+        const lower = key.toLowerCase();
+
+        if (lower.includes("authorization") || lower.includes("signature")) {
+          return [key, "[REDACTED]"];
+        }
+
+        return [key, value];
+      }),
+    );
+
+    console.log("CyberSource headers:", safeHeaders);
 
     const response = await axios.post(url, rawBody, {
       headers: {
@@ -690,26 +894,16 @@ const activateRecurringBilling = async (req, res) => {
       timeout: 10000,
     });
 
-    // --------------------------------------------------------
-    // 8. Log successful response
-    // --------------------------------------------------------
-
-    console.log("CyberSource recurring billing response:", {
+    console.log("CyberSource recurring response:", {
       status: response.status,
       data: response.data,
     });
-
-    console.log("===== RECURRING BILLING SUCCESS =====");
 
     return res.status(200).json({
       success: true,
       response: response.data,
     });
   } catch (error) {
-    // --------------------------------------------------------
-    // IMPORTANT DEBUGGING INFORMATION
-    // --------------------------------------------------------
-
     console.error("===== RECURRING BILLING ERROR =====");
 
     console.error("Message:", error.message);
@@ -722,27 +916,15 @@ const activateRecurringBilling = async (req, res) => {
 
     console.error("CyberSource response headers:", JSON.stringify(error.response?.headers || null, null, 2));
 
-    console.error("Stack:", error.stack);
-
     console.error("====================================");
-
-    // --------------------------------------------------------
-    // Return CyberSource's actual HTTP status
-    // --------------------------------------------------------
 
     const status = error.response?.status || 500;
 
     return res.status(status).json({
       error: "Failed to process recurring billing.",
-
-      // Useful during deployment debugging.
       status,
-
       code: error.code || null,
-
       details: error.response?.data || null,
-
-      message: error.response?.data?.message || error.message,
     });
   }
 };
