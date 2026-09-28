@@ -36,6 +36,7 @@ const MERCHANT_ID = process.env.CYBERSOURCE_MERCHANT_ID;
 const API_KEY_ID = process.env.CYBERSOURCE_API_KEY_ID;
 const SHARED_SECRET = process.env.CYBERSOURCE_API_SECRET_KEY;
 const resourcePath = "/uc/v1/sessions";
+const subscriptionResourcePath = process.env.SUBSCRIPTION_RESOURCE_PATH;
 
 const decodeJwtPayload = (token) => {
   try {
@@ -233,7 +234,7 @@ const activateRecurringBilling = async (req, res) => {
       });
     }
 
-    const resourcePath = `/rbs/v1/subscriptions/follow-ons/${transactionId}`;
+    const resourcePath = `${subscriptionResourcePath}/${transactionId}`;
 
     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
 
@@ -262,7 +263,7 @@ app.post("/activate-recurring-billing", activateRecurringBilling);
 
 app.post("/checkout-session", createCheckoutSession);
 
-app.post("/verify-payment", verifyPaymentResult);
+// app.post("/verify-payment", verifyPaymentResult);
 
 console.log(`Backend server started at ${new Date().toISOString()}`);
 
