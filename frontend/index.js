@@ -9,7 +9,7 @@ const paymentPayload = {
   data: {
     orderInformation: {
       amountDetails: {
-        totalAmount: "00.00",
+        totalAmount: "21.00",
         currency: "USD",
       },
     },

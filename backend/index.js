@@ -213,8 +213,7 @@ const activateRecurringBilling = async (req, res) => {
       });
     }
 
-    // Format start date as YYYYMMDD
-    // const startDateFormatted = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const startDateFormatted = new Date().toISOString().slice(0, 10);
 
     const subscriptionData = {
       clientReferenceInformation: {
@@ -223,7 +222,7 @@ const activateRecurringBilling = async (req, res) => {
       subscriptionInformation: {
         planId: "7896588237846374604803",
         name: "Daily 20 Test",
-        startDate: `${new Date().toISOString()}`,
+        startDate: startDateFormatted,
       },
     };
 
@@ -234,6 +233,7 @@ const activateRecurringBilling = async (req, res) => {
     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", rbsResourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
 
     // Send payload as string to match the exact payload used for hash/signature calculation
+
     const response = await axios.post(`https://${normalizedHost}${rbsResourcePath}`, rawBody, {
       headers: {
         ...headers,
@@ -248,7 +248,7 @@ const activateRecurringBilling = async (req, res) => {
     });
   } catch (error) {
     console.error("Recurring billing error:", error.response?.data || error.message);
-    return res.status(500).json({
+    return res.status(error.response?.status || 500).json({
       error: "Failed to process recurring billing",
       details: error.response?.data ?? null,
     });
