@@ -239,13 +239,7 @@ const activateRecurringBilling = async (req, res) => {
     // Generate authentication headers
     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", rbsResourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
 
-    const response = await axios.post(`https://${normalizedHost}${rbsResourcePath}`, rawBody, {
-      headers: {
-        ...headers,
-        "Content-Type": "application/json",
-      },
-      timeout: 10000,
-    });
+    const response = await axios.post(`https://${normalizedHost}${rbsResourcePath}`, rawBody, { headers, timeout: 10000 });
 
     return res.json({
       success: true,
