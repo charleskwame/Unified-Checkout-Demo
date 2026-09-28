@@ -262,6 +262,62 @@ const activateRecurringBilling = async (req, res) => {
   }
 };
 
+// const activateRecurringBilling = async (req, res) => {
+//   try {
+//     const decoded = decodeJwtPayload(req.body?.result);
+
+//     const transactionId = decoded?.id;
+
+//     if (!transactionId) {
+//       return res.status(400).json({
+//         error: "Transaction ID is missing from the decoded result",
+//       });
+//     }
+
+//     const subscriptionData = {
+//       clientReferenceInformation: {
+//         code: `subscription_${Date.now()}`,
+//       },
+//       subscriptionInformation: {
+//         planId: "7896588237846374604803",
+//         name: "Daily 20 Test",
+//         startDate: `${new Date().toISOString()}`,
+//       },
+//     };
+
+//     const rawBody = JSON.stringify(subscriptionData);
+
+//     if (!transactionId) {
+//       return res.status(400).json({
+//         error: "Transaction ID is missing from the decoded result",
+//       });
+//     }
+
+//     const resourcePath = `/rbs/v1/subscriptions/follow-ons/${transactionId}`;
+
+//     const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", resourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+
+//     const response = await axios.post(`https://${normalizedHost}${resourcePath}`, rawBody, {
+//       headers: {
+//         ...headers,
+//         "Content-Type": "application/json",
+//       },
+//       timeout: 10000,
+//     });
+
+//     return res.json({
+//       success: true,
+//       response: response?.data,
+//     });
+//   } catch (error) {
+//     console.error("Recurring billing error:", error.response?.data || error.message);
+//     return res.status(500).json({
+//       error: "Failed to process recurring billing",
+//       details: error.response?.data ?? null,
+//     });
+//   }
+// };
+
 app.post("/activate-recurring-billing", activateRecurringBilling);
 
 app.post("/checkout-session", createCheckoutSession);
