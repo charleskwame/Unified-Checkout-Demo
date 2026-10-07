@@ -88,6 +88,7 @@ export default function App() {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [completed, setCompleted] = useState(false);
   const clientRef = useRef(null);
   const checkoutRef = useRef(null);
 
@@ -113,6 +114,7 @@ export default function App() {
     setOpen(true);
     setStatus("Loading checkout, please wait...");
     setError("");
+    setCompleted(false);
 
     try {
       // Create a capture context, load the SDK specified by it, and mount the payment UI.
@@ -134,6 +136,7 @@ export default function App() {
 
       const verified = await postJson("/verify-payment", { completeResponse: result });
       setStatus(verified.decoded?.status === "AUTHORIZED" ? `Payment authorized. Payment ID: ${verified.decoded.id}` : "Payment response received.");
+      setCompleted(true);
       setOpen(false);
     } catch (checkoutError) {
       console.error("Unified Checkout payment failed:", checkoutError);
@@ -166,8 +169,15 @@ export default function App() {
           {processing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}
         </button>
         <p
-          className={`status${error ? " error" : ""}`}
+          className={`status${error ? " error" : completed ? " success" : ""}`}
           role={error ? "alert" : "status"}>
+          {completed && !error ? (
+            <span
+              className="status-icon"
+              aria-hidden="true">
+              ✓
+            </span>
+          ) : null}
           {error || status}
         </p>
       </section>

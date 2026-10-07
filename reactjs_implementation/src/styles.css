@@ -119,6 +119,30 @@ button {
     14px/1.4 Arial,
     sans-serif;
 }
+.status.success {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 0;
+  padding: 13px 14px;
+  color: #176044;
+  background: #edf8f1;
+  border: 1px solid #c6e8d2;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.status-icon {
+  display: inline-grid;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  color: #fff;
+  background: #2d9365;
+  border-radius: 50%;
+  font-size: 13px;
+  line-height: 1;
+}
 .status.error {
   color: #a23b35;
 }
