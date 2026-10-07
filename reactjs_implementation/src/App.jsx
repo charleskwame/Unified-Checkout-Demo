@@ -134,6 +134,7 @@ export default function App() {
 
       const verified = await postJson("/verify-payment", { completeResponse: result });
       setStatus(verified.decoded?.status === "AUTHORIZED" ? `Payment authorized. Payment ID: ${verified.decoded.id}` : "Payment response received.");
+      setOpen(false);
     } catch (checkoutError) {
       console.error("Unified Checkout payment failed:", checkoutError);
       setError(checkoutError.message || "Unable to initialize payment.");
