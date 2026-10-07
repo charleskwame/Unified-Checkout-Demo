@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 const apiBaseUrl = (import.meta.env.VITE_CHECKOUT_API_URL || "https://unified-checkout-backend.vercel.app").replace(/\/$/, "");
 
+// This payload defines the payment methods and order details requested from the backend.
 const paymentPayload = {
   targetOrigins: [window.location.origin],
   clientVersion: "1.0",
@@ -41,6 +42,7 @@ const paymentPayload = {
 };
 
 function decodeJwtPayload(token) {
+  // The capture context is a JWT; only its payload is needed to locate the SDK library.
   if (typeof token !== "string") throw new Error("Capture context is missing.");
   const parts = token.split(".");
   if (parts.length !== 3) throw new Error("Invalid capture context format.");
@@ -53,6 +55,7 @@ function decodeJwtPayload(token) {
 }
 
 function loadCyberSourceSdk(clientLibrary, integrity) {
+  // Reuse an SDK already loaded by the page to avoid adding duplicate script tags.
   if (window.VAS?.UnifiedCheckout) return Promise.resolve();
 
   return new Promise((resolve, reject) => {
@@ -90,6 +93,7 @@ export default function App() {
 
   useEffect(
     () => () => {
+      // Release the mounted checkout and SDK client when the component unmounts.
       try {
         checkoutRef.current?.destroy();
       } catch (destroyError) {
@@ -111,6 +115,7 @@ export default function App() {
     setError("");
 
     try {
+      // Create a capture context, load the SDK specified by it, and mount the payment UI.
       const captureContext = await postJson("/checkout-session", paymentPayload);
       const contextData = decodeJwtPayload(captureContext)?.ctx?.[0]?.data;
       if (!contextData?.clientLibrary) throw new Error("Capture context does not contain client library details.");
@@ -121,6 +126,7 @@ export default function App() {
       clientRef.current = await window.VAS.UnifiedCheckout(captureContext);
       checkoutRef.current = await clientRef.current.createCheckout({ autoProcessing: true });
       const result = await checkoutRef.current.mount({
+        // These selectors point the SDK at the two containers rendered below.
         paymentSelection: "#buttonPaymentListContainer",
         paymentScreen: "#embeddedPaymentContainer",
       });
@@ -139,7 +145,9 @@ export default function App() {
 
   return (
     <main className="checkout-shell">
-      <section className="checkout-card" aria-busy={processing}>
+      <section
+        className="checkout-card"
+        aria-busy={processing}>
         <p className="eyebrow">Unified Checkout Demo</p>
         <div className="order-summary">
           <h1>Order Summary</h1>
@@ -149,14 +157,22 @@ export default function App() {
             <strong>$50.00</strong>
           </div>
         </div>
-        <button className="proceed-button" type="button" disabled={processing} onClick={startCheckout}>
+        <button
+          className="proceed-button"
+          type="button"
+          disabled={processing}
+          onClick={startCheckout}>
           {processing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}
         </button>
-        <p className={`status${error ? " error" : ""}`} role={error ? "alert" : "status"}>
+        <p
+          className={`status${error ? " error" : ""}`}
+          role={error ? "alert" : "status"}>
           {error || status}
         </p>
       </section>
-      <aside className={`checkout-sidebar${open ? " open" : ""}`} aria-label="Payment checkout">
+      <aside
+        className={`checkout-sidebar${open ? " open" : ""}`}
+        aria-label="Payment checkout">
         <h2>Complete Payment</h2>
         <div id="buttonPaymentListContainer" />
         <div id="embeddedPaymentContainer" />
