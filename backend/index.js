@@ -194,14 +194,42 @@ const verifyPaymentResult = async (req, res) => {
       });
     }
 
-    console.log("Decoded payment result:", decoded);
+    const paymentId = decoded.id;
 
-    return res.status(200).json({
-      success: true,
-      decoded,
-    });
+    if (!paymentId) {
+      return res.status(400).json({
+        error: "Payment ID is missing from the payment result JWT",
+      });
+    }
+
+    // Fail early when the server cannot create an authenticated CyberSource request.
+    if (!HOST || !MERCHANT_ID || !API_KEY_ID || !SHARED_SECRET) {
+      return res.status(500).json({
+        error: "CyberSource environment variables are not fully configured.",
+      });
+    }
+
+    const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    const basePath = process.env.PAYMENTVERIFY_RESOURCE_PATH || "/pts/v2/refresh-payment-status";
+    const paymentResourcePath = `${basePath.replace(/\/+$/, "")}/${encodeURIComponent(paymentId)}`;
+    const url = `https://${normalizedHost}${paymentResourcePath}`;
+
+    // CyberSource signs the exact request path, so create headers for this payment lookup.
+    const headers = createHeaders(MERCHANT_ID, normalizedHost, "get", paymentResourcePath, "", API_KEY_ID, SHARED_SECRET);
+
+    const response = await axios.get(url, { headers, timeout: 10000 });
+
+    // Return the full CyberSource response for now.
+    return res.status(response.status).json(response.data);
   } catch (error) {
-    console.error("Payment result error:", error);
+    console.error("Payment result error:", error.response?.data || error.message);
+
+    if (error.response) {
+      return res.status(error.response.status).json({
+        error: error.response.data?.message || "CyberSource request failed",
+        details: error.response.data,
+      });
+    }
 
     return res.status(500).json({
       error: "Failed to process payment result",
