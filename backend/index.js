@@ -200,6 +200,37 @@ const normalizeCheckoutPayload = (rawPayload) => {
   return payload;
 };
 
+const normalizeTransactionStatus = (transaction) => {
+  // Transaction Details has no single top-level status, so flatten the pieces clients care about.
+  const applications = Array.isArray(transaction?.applicationInformation?.applications) ? transaction.applicationInformation.applications : [];
+
+  const authResult = applications.find((application) => application?.name === "ics_auth");
+  const declined = applications.some((application) => application?.rFlag && application.rFlag !== "SOK");
+  const authorized = declined ? false : authResult ? authResult.rFlag === "SOK" : applications.some((application) => application?.rFlag === "SOK");
+
+  const reportedStatus = transaction?.applicationInformation?.status;
+
+  let status = null;
+
+  if (declined) {
+    status = "DECLINED";
+  } else if (reportedStatus) {
+    status = String(reportedStatus).toUpperCase();
+  } else if (authorized) {
+    status = "AUTHORIZED";
+  }
+
+  return {
+    status,
+    authorized,
+    paymentId: transaction?.id || null,
+    orderCode: transaction?.clientReferenceInformation?.code || null,
+    amount: transaction?.orderInformation?.amountDetails?.totalAmount || null,
+    currency: transaction?.orderInformation?.amountDetails?.currency || null,
+    submittedAtUtc: transaction?.submitTimeUTC || null,
+  };
+};
+
 const verifyPaymentResult = async (req, res) => {
   try {
     // The frontend sends the SDK's signed completion response for server-side decoding.
@@ -248,8 +279,13 @@ const verifyPaymentResult = async (req, res) => {
       timeout: 10000,
     });
 
-    // Return the full CyberSource response for now.
-    return res.status(response.status).json(response.data);
+    const transaction = response.data;
+
+    // Return the full CyberSource response plus a normalized summary for the checkout clients.
+    return res.status(response.status).json({
+      ...transaction,
+      ...normalizeTransactionStatus(transaction),
+    });
   } catch (error) {
     console.error("Payment result error:", error.response?.status, error.response?.data || error.message);
 

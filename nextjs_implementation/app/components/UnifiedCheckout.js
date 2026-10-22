@@ -84,7 +84,7 @@ export default function UnifiedCheckout() {
       });
       const verified = await verifyResponse.json();
       if (!verifyResponse.ok) throw new Error(verified.error || "Payment verification failed.");
-      setStatus(verified.decoded?.status === "AUTHORIZED" ? `Payment authorized. Payment ID: ${verified.decoded.id}` : "Payment response received.");
+      setStatus(verified.authorized ? `Payment authorized. Payment ID: ${verified.paymentId}` : "Payment response received.");
     } catch (checkoutError) {
       console.error("Unified Checkout payment failed:", checkoutError);
       setError(checkoutError.message || "Unable to initialize payment.");
@@ -96,7 +96,9 @@ export default function UnifiedCheckout() {
 
   return (
     <main className="checkout-shell">
-      <section className="checkout-card" aria-busy={processing}>
+      <section
+        className="checkout-card"
+        aria-busy={processing}>
         <p className="eyebrow">Unified Checkout Demo</p>
         <div className="order-summary">
           <h1>Order Summary</h1>
@@ -106,14 +108,22 @@ export default function UnifiedCheckout() {
             <strong>$50.00</strong>
           </div>
         </div>
-        <button className="proceed-button" type="button" disabled={processing} onClick={startCheckout}>
+        <button
+          className="proceed-button"
+          type="button"
+          disabled={processing}
+          onClick={startCheckout}>
           {processing ? "Loading Checkout, Please Wait..." : "Proceed to Payment"}
         </button>
-        <p className={`status${error ? " error" : ""}`} role={error ? "alert" : "status"}>
+        <p
+          className={`status${error ? " error" : ""}`}
+          role={error ? "alert" : "status"}>
           {error || status}
         </p>
       </section>
-      <aside className={`checkout-sidebar${open ? " open" : ""}`} aria-label="Payment checkout">
+      <aside
+        className={`checkout-sidebar${open ? " open" : ""}`}
+        aria-label="Payment checkout">
         <h2>Complete Payment</h2>
         <div id="buttonPaymentListContainer" />
         <div id="embeddedPaymentContainer" />

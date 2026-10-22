@@ -135,7 +135,7 @@ export default function App() {
       if (!result) throw new Error("Unified Checkout returned no payment result.");
 
       const verified = await postJson("/verify-payment", { completeResponse: result });
-      setStatus(verified.decoded?.status === "AUTHORIZED" ? `Payment authorized. Payment ID: ${verified.decoded.id}` : "Payment response received.");
+      setStatus(verified.authorized ? `Payment authorized. Payment ID: ${verified.paymentId}` : "Payment response received.");
       setCompleted(true);
       setOpen(false);
     } catch (checkoutError) {
