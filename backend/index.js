@@ -214,20 +214,34 @@ const verifyPaymentResult = async (req, res) => {
     const paymentResourcePath = `${basePath.replace(/\/+$/, "")}/${encodeURIComponent(paymentId)}`;
     const url = `https://${normalizedHost}${paymentResourcePath}`;
 
-    // CyberSource signs the exact request path, so create headers for this payment lookup.
-    const headers = createHeaders(MERCHANT_ID, normalizedHost, "get", paymentResourcePath, "", API_KEY_ID, SHARED_SECRET);
+    // CyberSource expects a POST with a request body for this endpoint.
+    const requestBody = {};
+    const orderCode = decoded.details?.clientReferenceInformation?.code;
 
-    const response = await axios.get(url, { headers, timeout: 10000 });
+    if (orderCode) {
+      requestBody.clientReferenceInformation = { code: orderCode };
+    }
+
+    const rawBody = JSON.stringify(requestBody);
+
+    // CyberSource signs the exact request path and body, so create headers after building the body.
+    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", paymentResourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
+
+    const response = await axios.post(url, rawBody, {
+      headers: { ...headers, "Content-Type": "application/json" },
+      timeout: 10000,
+    });
 
     // Return the full CyberSource response for now.
     return res.status(response.status).json(response.data);
   } catch (error) {
-    console.error("Payment result error:", error.response?.data || error.message);
+    console.error("Payment result error:", error.response?.status, error.response?.data || error.message);
 
     if (error.response) {
       return res.status(error.response.status).json({
         error: error.response.data?.message || "CyberSource request failed",
-        details: error.response.data,
+        status: error.response.status,
+        details: error.response.data || error.response.statusText,
       });
     }
 
