@@ -194,11 +194,12 @@ const verifyPaymentResult = async (req, res) => {
       });
     }
 
-    const paymentId = decoded.id;
+    // Transaction Details keys off the request ID returned by the payment, which is the JWT's `id`.
+    const transactionId = decoded.id;
 
-    if (!paymentId) {
+    if (!transactionId) {
       return res.status(400).json({
-        error: "Payment ID is missing from the payment result JWT",
+        error: "Transaction ID is missing from the payment result JWT",
       });
     }
 
@@ -210,27 +211,14 @@ const verifyPaymentResult = async (req, res) => {
     }
 
     const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-    const basePath = process.env.PAYMENTVERIFY_RESOURCE_PATH || "/pts/v2/refresh-payment-status";
-    const paymentResourcePath = `${basePath.replace(/\/+$/, "")}/${encodeURIComponent(paymentId)}`;
-    const url = `https://${normalizedHost}${paymentResourcePath}`;
+    const basePath = process.env.PAYMENTVERIFY_RESOURCE_PATH || "/tss/v2/transactions";
+    const transactionResourcePath = `${basePath.replace(/\/+$/, "")}/${encodeURIComponent(transactionId)}`;
+    const url = `https://${normalizedHost}${transactionResourcePath}`;
 
-    // CyberSource expects a POST with a request body for this endpoint.
-    const requestBody = {};
-    const orderCode = decoded.details?.clientReferenceInformation?.code;
+    // Transaction Details uses a GET with no request body; only the path is signed.
+    const headers = createHeaders(MERCHANT_ID, normalizedHost, "get", transactionResourcePath, "", API_KEY_ID, SHARED_SECRET);
 
-    if (orderCode) {
-      requestBody.clientReferenceInformation = { code: orderCode };
-    }
-
-    const rawBody = JSON.stringify(requestBody);
-
-    // CyberSource signs the exact request path and body, so create headers after building the body.
-    const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", paymentResourcePath, rawBody, API_KEY_ID, SHARED_SECRET);
-
-    const response = await axios.post(url, rawBody, {
-      headers: { ...headers, "Content-Type": "application/json" },
-      timeout: 10000,
-    });
+    const response = await axios.get(url, { headers, timeout: 10000 });
 
     // Return the full CyberSource response for now.
     return res.status(response.status).json(response.data);
