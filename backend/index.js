@@ -232,6 +232,10 @@ const normalizeTransactionStatus = (transaction) => {
 };
 
 const verifyPaymentResult = async (req, res) => {
+  let requestedTransactionId = null;
+  let requestedOrderCode = null;
+  let decodedStatus = null;
+
   try {
     // The frontend sends the SDK's signed completion response for server-side decoding.
     const { completeResponse } = req.body;
@@ -251,7 +255,12 @@ const verifyPaymentResult = async (req, res) => {
     }
 
     // Transaction Details keys off the request ID returned by the payment, which is the JWT's `id`.
-    const transactionId = decoded.id;
+    let transactionId = decoded.id;
+    const orderCode = decoded.details?.clientReferenceInformation?.code || null;
+
+    requestedTransactionId = transactionId || null;
+    requestedOrderCode = orderCode;
+    decodedStatus = decoded.status || null;
 
     if (!transactionId) {
       return res.status(400).json({
@@ -268,16 +277,47 @@ const verifyPaymentResult = async (req, res) => {
 
     const normalizedHost = HOST.replace(/^https?:\/\//, "").replace(/\/+$/, "");
     const basePath = process.env.PAYMENTVERIFY_RESOURCE_PATH || "/tss/v2/transactions";
-    const transactionResourcePath = `${basePath.replace(/\/+$/, "")}/${encodeURIComponent(transactionId)}`;
-    const url = `https://${normalizedHost}${transactionResourcePath}`;
+    const transactionBasePath = basePath.replace(/\/+$/, "");
 
-    // Transaction Details uses a GET with no request body, authenticated with a JWT bearer token.
-    const token = createBearerToken(MERCHANT_ID, API_KEY_ID, normalizedHost, "get", transactionResourcePath, SHARED_SECRET);
+    const fetchTransaction = async (id) => {
+      const transactionResourcePath = `${transactionBasePath}/${encodeURIComponent(id)}`;
+      const token = createBearerToken(MERCHANT_ID, API_KEY_ID, normalizedHost, "get", transactionResourcePath, SHARED_SECRET);
 
-    const response = await axios.get(url, {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/hal+json" },
-      timeout: 10000,
-    });
+      return axios.get(`https://${normalizedHost}${transactionResourcePath}`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/hal+json" },
+        timeout: 10000,
+      });
+    };
+
+    const findTransactionIdByOrderCode = async (code) => {
+      // Transaction Details can lag behind the payment, so fall back to searching by order reference.
+      const searchPath = "/tss/v2/searches";
+      const rawBody = JSON.stringify({ query: `clientReferenceInformation.code:"${code}"`, offset: 0, limit: 1 });
+      const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", searchPath, rawBody, API_KEY_ID, SHARED_SECRET);
+
+      const response = await axios.post(`https://${normalizedHost}${searchPath}`, rawBody, { headers, timeout: 10000 });
+
+      return response.data?._embedded?.transactionSummaries?.[0]?.id || null;
+    };
+
+    let response;
+
+    try {
+      response = await fetchTransaction(transactionId);
+    } catch (error) {
+      if (error.response?.status !== 404 || !orderCode) {
+        throw error;
+      }
+
+      const resolvedTransactionId = await findTransactionIdByOrderCode(orderCode);
+
+      if (!resolvedTransactionId) {
+        throw error;
+      }
+
+      transactionId = resolvedTransactionId;
+      response = await fetchTransaction(resolvedTransactionId);
+    }
 
     const transaction = response.data;
 
@@ -293,6 +333,9 @@ const verifyPaymentResult = async (req, res) => {
       return res.status(error.response.status).json({
         error: error.response.data?.message || "CyberSource request failed",
         status: error.response.status,
+        requestedTransactionId,
+        orderCode: requestedOrderCode,
+        jwtStatus: decodedStatus,
         details: error.response.data || error.response.statusText,
       });
     }
