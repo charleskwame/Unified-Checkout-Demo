@@ -4,6 +4,7 @@ const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { createHeaders } = require("cybersource-auth");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const axios = require("axios");
 
 const app = express();
@@ -61,6 +62,30 @@ const decodeJwtPayload = (token) => {
     console.error("Failed to decode JWT:", error);
     return null;
   }
+};
+
+const createBearerToken = (merchantId, keyId, host, httpMethod, requestPath, sharedSecret) => {
+  // CyberSource JWT (symmetric key) v2: the shared secret, base64-decoded, signs an HS256 token
+  // that is sent as `Authorization: Bearer <token>`. The API key ID must be in the JWT header
+  // as `kid`, otherwise the Transaction Details gateway rejects the request with 400 bad_request.
+  const iat = Math.floor(Date.now() / 1000);
+
+  const payload = {
+    iat,
+    exp: iat + 120,
+    "request-method": httpMethod.toLowerCase(),
+    "request-resource-path": requestPath,
+    "request-host": host,
+    iss: merchantId,
+    jti: crypto.randomUUID(),
+    "v-c-jwt-version": "2",
+    "v-c-merchant-id": merchantId,
+  };
+
+  return jwt.sign(payload, Buffer.from(sharedSecret, "base64"), {
+    algorithm: "HS256",
+    header: { alg: "HS256", typ: "JWT", kid: keyId },
+  });
 };
 
 const createCheckoutSession = async (req, res) => {
@@ -215,10 +240,13 @@ const verifyPaymentResult = async (req, res) => {
     const transactionResourcePath = `${basePath.replace(/\/+$/, "")}/${encodeURIComponent(transactionId)}`;
     const url = `https://${normalizedHost}${transactionResourcePath}`;
 
-    // Transaction Details uses a GET with no request body; only the path is signed.
-    const headers = createHeaders(MERCHANT_ID, normalizedHost, "get", transactionResourcePath, "", API_KEY_ID, SHARED_SECRET);
+    // Transaction Details uses a GET with no request body, authenticated with a JWT bearer token.
+    const token = createBearerToken(MERCHANT_ID, API_KEY_ID, normalizedHost, "get", transactionResourcePath, SHARED_SECRET);
 
-    const response = await axios.get(url, { headers, timeout: 10000 });
+    const response = await axios.get(url, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/hal+json" },
+      timeout: 10000,
+    });
 
     // Return the full CyberSource response for now.
     return res.status(response.status).json(response.data);
