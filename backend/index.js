@@ -6,6 +6,7 @@ const { createHeaders } = require("cybersource-auth");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const axios = require("axios");
+const { isConfigured: isResponseMleConfigured, isJwe, decryptNotification } = require("./responseMle");
 
 const app = express();
 // Only the deployed checkout clients and local Vite development server may call this API.
@@ -13,6 +14,9 @@ const allowedOrigins = [
   "https://unified-checkout-frontend.vercel.app",
   "https://reactjsimplementation.vercel.app",
   "http://localhost:5173",
+  // Unified Checkout rejects http origins, so local dev runs the Vite server over HTTPS.
+  "https://localhost:5173",
+  "https://127.0.0.1:5173",
   process.env.FRONTEND_ORIGIN,
 ].filter(Boolean);
 
@@ -32,6 +36,9 @@ app.use(
 );
 
 app.use(express.json());
+
+// Response MLE notifications can arrive as a raw JWE instead of JSON.
+app.use(express.text({ type: ["text/plain", "application/jwt", "application/jwe", "application/octet-stream"], limit: "1mb" }));
 
 // These values are used to authenticate server-to-server requests to CyberSource.
 const HOST = process.env.CYBERSOURCE_HOST;
@@ -434,21 +441,38 @@ const cyberSourceWebhookHealthCheck = (req, res) => {
 };
 
 const receiveCyberSourceWebhook = (req, res) => {
-  // EBC2 retries when the endpoint is slow or returns 4xx/5xx, so acknowledge
-  // first and keep the processing synchronous only for logging.
-  const notification = req.body && typeof req.body === "object" ? req.body : {};
+  // EBC2 retries when the endpoint is slow or returns 4xx/5xx, so keep this fast.
+  const rawBody = typeof req.body === "string" ? req.body.trim() : "";
+
+  let notification = req.body && typeof req.body === "object" ? req.body : {};
+  let wasEncrypted = false;
+
+  // Response MLE sends either `{ encData: "<JWE>" }` or the bare JWE as the body.
+  const encryptedPayload = notification.encData || (isJwe(rawBody) ? rawBody : null);
+
+  if (encryptedPayload) {
+    if (!isResponseMleConfigured()) {
+      console.warn("[webhook] Received an encrypted notification but Response MLE is not configured.");
+      return res.status(200).json({ status: "ignored", reason: "Encrypted payload requires Response MLE decryption." });
+    }
+
+    try {
+      notification = decryptNotification(encryptedPayload);
+      wasEncrypted = true;
+    } catch (error) {
+      console.error("[webhook] Failed to decrypt notification:", error.message);
+      return res.status(400).json({ status: "rejected", error: "Unable to decrypt the notification payload." });
+    }
+  }
 
   const eventType = notification.eventType || null;
   const webhookId = notification.webhookId || null;
 
-  if (notification.encData) {
-    // Response MLE encrypts the body as a JWE. Decryption needs the merchant
-    // response-MLE private key; accept the notification so EBC2 stops retrying.
-    console.warn(`[webhook] Received encrypted notification (webhookId=${webhookId}); set up Response MLE to decrypt it.`);
-    return res.status(200).json({ status: "ignored", reason: "Encrypted payload requires Response MLE decryption." });
-  }
-
-  if (WEBHOOK_SIGNING_KEY) {
+  if (wasEncrypted) {
+    // An encrypted body has no plaintext payload to sign; a successful decryption
+    // with the merchant private key is the authenticity check.
+    console.log(`[webhook] Decrypted Response MLE payload (webhookId=${webhookId}); v-c-signature check skipped.`);
+  } else if (WEBHOOK_SIGNING_KEY) {
     const verification = verifyWebhookSignature(req.get("v-c-signature"), notification.payload);
 
     if (!verification.valid) {
