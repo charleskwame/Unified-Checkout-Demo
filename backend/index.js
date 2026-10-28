@@ -40,6 +40,14 @@ const API_KEY_ID = process.env.CYBERSOURCE_API_KEY_ID;
 const SHARED_SECRET = process.env.CYBERSOURCE_API_SECRET_KEY;
 const resourcePath = "/uc/v1/sessions";
 
+// Webhook endpoint configured in EBC2. EBC2 calls the same URL with GET for the
+// health check and with POST for transaction notifications. Verification uses the
+// symmetric egress key (base64) shown/downloaded when the webhook is created.
+const WEBHOOK_PATH = "/webhook/cybersource";
+const WEBHOOK_SIGNING_KEY = process.env.CYBERSOURCE_WEBHOOK_SIGNING_KEY;
+// Optional replay protection window; EBC2 timestamps are epoch milliseconds.
+const WEBHOOK_MAX_SKEW_MS = Number(process.env.CYBERSOURCE_WEBHOOK_MAX_SKEW_MS || 0);
+
 const decodeJwtPayload = (token) => {
   // Payment results are JWTs; decode the payload for verification and API consumers.
   try {
@@ -346,9 +354,126 @@ const verifyPaymentResult = async (req, res) => {
   }
 };
 
+const parseWebhookSignature = (signatureHeader) => {
+  // EBC2 sends `v-c-signature: t=<epoch-ms>;keyId=<uuid>;sig=<base64 HMAC-SHA256>`.
+  if (typeof signatureHeader !== "string" || signatureHeader.trim().length === 0) {
+    return null;
+  }
+
+  const fields = signatureHeader.split(";").reduce((acc, part) => {
+    const separator = part.indexOf("=");
+
+    if (separator > 0) {
+      acc[part.slice(0, separator).trim()] = part.slice(separator + 1).trim();
+    }
+
+    return acc;
+  }, {});
+
+  if (!fields.t || !fields.sig) {
+    return null;
+  }
+
+  return { timestamp: fields.t, keyId: fields.keyId || null, signature: fields.sig };
+};
+
+const verifyWebhookSignature = (signatureHeader, payload) => {
+  const parsed = parseWebhookSignature(signatureHeader);
+
+  if (!parsed) {
+    return { valid: false, reason: "Missing or malformed v-c-signature header." };
+  }
+
+  // The signed value is `<timestamp>.<JSON payload>`; the HMAC key is the base64
+  // egress key decoded to bytes.
+  const signedValue = `${parsed.timestamp}.${JSON.stringify(payload)}`;
+
+  const expected = crypto.createHmac("sha256", Buffer.from(WEBHOOK_SIGNING_KEY, "base64")).update(signedValue, "utf8").digest("base64");
+
+  const expectedBuffer = Buffer.from(expected);
+  const receivedBuffer = Buffer.from(parsed.signature);
+
+  if (expectedBuffer.length !== receivedBuffer.length || !crypto.timingSafeEqual(expectedBuffer, receivedBuffer)) {
+    return { valid: false, reason: "Signature does not match the notification payload." };
+  }
+
+  if (WEBHOOK_MAX_SKEW_MS > 0) {
+    const timestamp = Number(parsed.timestamp);
+
+    if (!Number.isFinite(timestamp) || Math.abs(Date.now() - timestamp) > WEBHOOK_MAX_SKEW_MS) {
+      return { valid: false, reason: "Notification timestamp is outside the accepted window." };
+    }
+  }
+
+  return { valid: true, keyId: parsed.keyId };
+};
+
+const summarizeWebhookTransaction = (transactionResult) => {
+  // The UC transaction result nests the status differently per flow, so be tolerant.
+  const status =
+    transactionResult?.status ||
+    transactionResult?.responseStatus?.status ||
+    transactionResult?.decisionStatus ||
+    transactionResult?.transactionStatus ||
+    null;
+
+  return {
+    transactionId: transactionResult?.id || transactionResult?.requestID || null,
+    orderCode: transactionResult?.clientReferenceInformation?.code || null,
+    status: status ? String(status).toUpperCase() : null,
+    decision: transactionResult?.decision || transactionResult?.responseStatus?.decision || null,
+    amount: transactionResult?.orderInformation?.amountDetails?.totalAmount || null,
+    currency: transactionResult?.orderInformation?.amountDetails?.currency || null,
+    submittedAtUtc: transactionResult?.submitTimeUtc || null,
+  };
+};
+
+const cyberSourceWebhookHealthCheck = (req, res) => {
+  // EBC2 treats any 2xx answer as a healthy endpoint.
+  return res.status(200).json({ status: "ok", endpoint: WEBHOOK_PATH });
+};
+
+const receiveCyberSourceWebhook = (req, res) => {
+  // EBC2 retries when the endpoint is slow or returns 4xx/5xx, so acknowledge
+  // first and keep the processing synchronous only for logging.
+  const notification = req.body && typeof req.body === "object" ? req.body : {};
+
+  const eventType = notification.eventType || null;
+  const webhookId = notification.webhookId || null;
+
+  if (notification.encData) {
+    // Response MLE encrypts the body as a JWE. Decryption needs the merchant
+    // response-MLE private key; accept the notification so EBC2 stops retrying.
+    console.warn(`[webhook] Received encrypted notification (webhookId=${webhookId}); set up Response MLE to decrypt it.`);
+    return res.status(200).json({ status: "ignored", reason: "Encrypted payload requires Response MLE decryption." });
+  }
+
+  if (WEBHOOK_SIGNING_KEY) {
+    const verification = verifyWebhookSignature(req.get("v-c-signature"), notification.payload);
+
+    if (!verification.valid) {
+      console.warn(`[webhook] Rejected notification (webhookId=${webhookId}): ${verification.reason}`);
+      return res.status(401).json({ status: "rejected", error: verification.reason });
+    }
+  } else {
+    console.warn("[webhook] CYBERSOURCE_WEBHOOK_SIGNING_KEY is not set; accepting unverified notification.");
+  }
+
+  const transactionResult = notification.payload?.transactionResult || notification.payload || {};
+
+  console.log(`[webhook] ${eventType || "unknown event"} (webhookId=${webhookId})`, JSON.stringify(summarizeWebhookTransaction(transactionResult)));
+
+  return res.status(200).json({ status: "received", eventType, webhookId });
+};
+
 app.post("/checkout-session", createCheckoutSession);
 
 app.post("/verify-payment", verifyPaymentResult);
+
+// EBC2 webhook endpoint: GET is the health check, POST delivers notifications.
+app.get(WEBHOOK_PATH, cyberSourceWebhookHealthCheck);
+
+app.post(WEBHOOK_PATH, receiveCyberSourceWebhook);
 
 // Vercel imports the Express app in production; listen locally for development only.
 if (process.env.NODE_ENV !== "production") {
