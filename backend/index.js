@@ -6,6 +6,7 @@ const { createHeaders } = require("cybersource-auth");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const axios = require("axios");
+const { isConfigured: isResponseMleConfigured, isJwe, decryptNotification } = require("./responseMle");
 
 const app = express();
 // Only the deployed checkout clients and local Vite development server may call this API.
@@ -13,6 +14,9 @@ const allowedOrigins = [
   "https://unified-checkout-frontend.vercel.app",
   "https://reactjsimplementation.vercel.app",
   "http://localhost:5173",
+  // Unified Checkout rejects http origins, so local dev runs the Vite server over HTTPS.
+  "https://localhost:5173",
+  "https://127.0.0.1:5173",
   process.env.FRONTEND_ORIGIN,
 ].filter(Boolean);
 
@@ -32,6 +36,9 @@ app.use(
 );
 
 app.use(express.json());
+
+// Response MLE notifications can arrive as a raw JWE instead of JSON.
+app.use(express.text({ type: ["text/plain", "application/jwt", "application/jwe", "application/octet-stream"], limit: "1mb" }));
 
 // These values are used to authenticate server-to-server requests to CyberSource.
 const HOST = process.env.CYBERSOURCE_HOST;

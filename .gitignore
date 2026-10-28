@@ -141,3 +141,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+# CyberSource MLE keys / certificates (never commit private keys)
+*.p12
+*.pfx
+backend/certs/
