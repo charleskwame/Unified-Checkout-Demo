@@ -35,7 +35,16 @@ app.use(
   }),
 );
 
-app.use(express.json());
+app.use(
+  express.json({
+    limit: "1mb",
+    verify: (req, res, buffer) => {
+      if (req.originalUrl.startsWith(WEBHOOK_PATH)) {
+        req.rawBody = buffer.toString("utf8");
+      }
+    },
+  }),
+);
 
 // Response MLE notifications can arrive as a raw JWE instead of JSON.
 app.use(express.text({ type: ["text/plain", "application/jwt", "application/jwe", "application/octet-stream"], limit: "1mb" }));
@@ -422,8 +431,8 @@ const verifyWebhookSignature = (signatureHeader, payload) => {
 
   const expected = crypto.createHmac("sha256", Buffer.from(WEBHOOK_SIGNING_KEY, "base64")).update(signedValue, "utf8").digest("base64");
 
-  const expectedBuffer = Buffer.from(expected);
-  const receivedBuffer = Buffer.from(parsed.signature);
+  const expectedBuffer = Buffer.from(expected, "utf8");
+  const receivedBuffer = Buffer.from(parsed.signature, "utf8");
 
   if (expectedBuffer.length !== receivedBuffer.length || !crypto.timingSafeEqual(expectedBuffer, receivedBuffer)) {
     return { valid: false, reason: "Signature does not match the notification payload." };
@@ -439,6 +448,20 @@ const verifyWebhookSignature = (signatureHeader, payload) => {
 
   return { valid: true, keyId: parsed.keyId };
 };
+
+const parseWebhookPayload = (notification) => {
+  if (typeof notification?.payload !== "string") {
+    return notification?.payload || null;
+  }
+
+  try {
+    return JSON.parse(notification.payload);
+  } catch {
+    return null;
+  }
+};
+
+const getWebhookTransaction = (payload) => payload?.transactionResult || payload?.transaction || payload?.data?.transactionResult || payload || {};
 
 const summarizeWebhookTransaction = (transactionResult) => {
   // The UC transaction result nests the status differently per flow, so be tolerant.
@@ -469,6 +492,7 @@ const cyberSourceWebhookHealthCheck = (req, res) => {
 // observable even when the log UI is hard to filter.
 const recentWebhookNotifications = [];
 const WEBHOOK_DEBUG_TOKEN = process.env.CYBERSOURCE_WEBHOOK_DEBUG_TOKEN;
+const processedWebhookDeliveries = new Set();
 
 const recordWebhookNotification = (entry) => {
   recentWebhookNotifications.unshift(entry);
@@ -491,71 +515,82 @@ const cyberSourceWebhookDebug = (req, res) => {
 };
 
 const receiveCyberSourceWebhook = (req, res) => {
-  // EBC2 retries when the endpoint is slow or returns 4xx/5xx, so keep this fast.
-  const rawBody = typeof req.body === "string" ? req.body.trim() : "";
-
+  const startedAt = Date.now();
+  const rawBody = typeof req.body === "string" ? req.body.trim() : String(req.rawBody || "").trim();
   let notification = req.body && typeof req.body === "object" ? req.body : {};
   let wasEncrypted = false;
   let eventType = null;
   let webhookId = null;
+  let deliveryId = null;
+  let result = null;
+  let signatureVerified = false;
 
   const respond = (status, payload, detail) => {
-    recordWebhookNotification({
+    const entry = {
       receivedAt: new Date().toISOString(),
       method: req.method,
       eventType,
       webhookId,
+      deliveryId,
       status,
+      durationMs: Date.now() - startedAt,
+      signatureVerified,
+      transaction: result,
       detail: detail || payload.reason || payload.error || null,
-    });
-
+    };
+    recordWebhookNotification(entry);
+    console.log("[webhook] delivery", JSON.stringify(entry));
     return res.status(status).json(payload);
   };
 
-  // Response MLE sends either `{ encData: "<JWE>" }` or the bare JWE as the body.
   const encryptedPayload = notification.encData || (isJwe(rawBody) ? rawBody : null);
 
   if (encryptedPayload) {
     if (!isResponseMleConfigured()) {
-      console.warn("[webhook] Received an encrypted notification but Response MLE is not configured.");
-      return respond(200, { status: "ignored", reason: "Encrypted payload requires Response MLE decryption." });
+      return respond(503, { status: "retry", error: "Response MLE is not configured." });
     }
 
     try {
       notification = decryptNotification(encryptedPayload);
       wasEncrypted = true;
     } catch (error) {
-      console.error("[webhook] Failed to decrypt notification:", error.message);
       return respond(400, { status: "rejected", error: "Unable to decrypt the notification payload." }, error.message);
     }
   }
 
   eventType = notification.eventType || null;
   webhookId = notification.webhookId || null;
+  deliveryId = notification.notificationId || notification.eventId || notification.id || null;
 
-  if (wasEncrypted) {
-    // An encrypted body has no plaintext payload to sign; a successful decryption
-    // with the merchant private key is the authenticity check.
-    console.log(`[webhook] Decrypted Response MLE payload (webhookId=${webhookId}); v-c-signature check skipped.`);
-  } else if (!notification.payload) {
-    // EBC2's "test webhook" message has no `payload` object, so there is nothing to sign.
-    console.log(`[webhook] Test message received (webhookId=${webhookId}); v-c-signature check skipped.`);
-  } else if (WEBHOOK_SIGNING_KEY) {
-    const verification = verifyWebhookSignature(req.get("v-c-signature"), notification.payload);
+  if (!wasEncrypted && notification.payload) {
+    if (!WEBHOOK_SIGNING_KEY) {
+      console.warn("[webhook] CYBERSOURCE_WEBHOOK_SIGNING_KEY is not configured; accepting this notification without verification.");
+    } else {
+      const verification = verifyWebhookSignature(req.get("v-c-signature"), notification.payload);
 
-    if (!verification.valid) {
-      console.warn(`[webhook] Rejected notification (webhookId=${webhookId}): ${verification.reason}`);
-      return respond(401, { status: "rejected", error: verification.reason }, verification.reason);
+      if (!verification.valid) {
+        return respond(401, { status: "rejected", error: verification.reason }, verification.reason);
+      }
+
+      signatureVerified = true;
     }
-  } else {
-    console.warn("[webhook] CYBERSOURCE_WEBHOOK_SIGNING_KEY is not set; accepting unverified notification.");
   }
 
-  const transactionResult = notification.payload?.transactionResult || notification.payload || {};
+  if (deliveryId && processedWebhookDeliveries.has(deliveryId)) {
+    return respond(200, { status: "duplicate", eventType, webhookId, deliveryId });
+  }
 
-  console.log(`[webhook] ${eventType || "unknown event"} (webhookId=${webhookId})`, JSON.stringify(summarizeWebhookTransaction(transactionResult)));
+  const payload = parseWebhookPayload(notification);
+  result = summarizeWebhookTransaction(getWebhookTransaction(payload));
 
-  return respond(200, { status: "received", eventType, webhookId });
+  if (deliveryId) {
+    processedWebhookDeliveries.add(deliveryId);
+    if (processedWebhookDeliveries.size > 200) {
+      processedWebhookDeliveries.delete(processedWebhookDeliveries.values().next().value);
+    }
+  }
+
+  return respond(200, { status: "received", eventType, webhookId, deliveryId, transaction: result });
 };
 
 app.post("/checkout-session", createCheckoutSession);
