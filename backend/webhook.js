@@ -85,7 +85,16 @@ const handleWebhook = (req, res) => {
   try {
     const body = parseBody(req.body, req.rawBody);
     const jwe = getJwe(body);
-    const event = jwe ? decryptNotification(jwe) : (verifySignature(body, req.get("v-c-signature")), body?.payload ?? body);
+    const signatureHeader = req.get("v-c-signature");
+
+    let event;
+
+    if (jwe) {
+      event = decryptNotification(jwe);
+    } else {
+      if (signatureHeader) verifySignature(body, signatureHeader);
+      event = body?.payload ?? body;
+    }
 
     if (!event || typeof event !== "object") throw new Error("CyberSource webhook payload is invalid.");
 
