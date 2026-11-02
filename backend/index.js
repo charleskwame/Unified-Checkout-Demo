@@ -17,6 +17,7 @@ const decodeWebhookBuffer = (buffer, encoding) => {
 
   if (encoding === "gzip" || encoding === "x-gzip" || encoding === "identity") attempts.push(() => zlib.gunzipSync(buffer));
   if (encoding === "deflate" || encoding === "identity") attempts.push(() => zlib.inflateSync(buffer));
+  if (encoding === "deflate" || encoding === "identity") attempts.push(() => zlib.inflateRawSync(buffer));
   if (encoding === "br" || encoding === "identity") attempts.push(() => zlib.brotliDecompressSync(buffer));
 
   for (const decode of attempts) {
@@ -70,13 +71,18 @@ const parseWebhookBody = (req, res, next) => {
       const contentType = (req.get("content-type") || "").toLowerCase();
       const trimmedBody = req.rawBody.trim();
       const isJweBody = isJwe(trimmedBody);
-      req.body = isJweBody
-        ? req.rawBody
-        : contentType.includes("json") && trimmedBody.length > 0
-          ? JSON.parse(trimmedBody)
-          : contentType.includes("json")
-            ? {}
-            : req.rawBody;
+      if (isJweBody || !contentType.includes("json") || trimmedBody.length === 0) {
+        req.body = isJweBody || !contentType.includes("json") ? req.rawBody : {};
+      } else {
+        try {
+          req.body = JSON.parse(trimmedBody);
+        } catch (error) {
+          // EBC2 can send an opaque binary test body while labeling it JSON. Keep it
+          // available for diagnostics and let the webhook route acknowledge it.
+          req.webhookBodyParseError = error.message;
+          req.body = req.rawBody;
+        }
+      }
       next();
     } catch (error) {
       console.error(
@@ -87,7 +93,9 @@ const parseWebhookBody = (req, res, next) => {
           error: error.message,
         }),
       );
-      res.status(400).json({ status: "rejected", error: "Unable to decode webhook request body." });
+      req.webhookBodyParseError = error.message;
+      req.body = req.rawBody || {};
+      next();
     }
   });
 };
