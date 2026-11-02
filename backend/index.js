@@ -5,14 +5,39 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { createHeaders } = require("cybersource-auth");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const zlib = require("zlib");
 const axios = require("axios");
+const { isConfigured: isResponseMleConfigured, isJwe, decryptNotification } = require("./responseMle");
 
 const app = express();
+const WEBHOOK_PATH = "/webhook/cybersource";
+
+const decodeWebhookBuffer = (buffer, encoding) => {
+  const attempts = [];
+
+  if (encoding === "gzip" || encoding === "x-gzip" || encoding === "identity") attempts.push(() => zlib.gunzipSync(buffer));
+  if (encoding === "deflate" || encoding === "identity") attempts.push(() => zlib.inflateSync(buffer));
+  if (encoding === "deflate" || encoding === "identity") attempts.push(() => zlib.inflateRawSync(buffer));
+  if (encoding === "br" || encoding === "identity") attempts.push(() => zlib.brotliDecompressSync(buffer));
+
+  for (const decode of attempts) {
+    try {
+      return decode();
+    } catch {
+      // Try the next supported wire format.
+    }
+  }
+
+  return buffer;
+};
 // Only the deployed checkout clients and local Vite development server may call this API.
 const allowedOrigins = [
   "https://unified-checkout-frontend.vercel.app",
   "https://reactjsimplementation.vercel.app",
   "http://localhost:5173",
+  // Unified Checkout rejects http origins, so local dev runs the Vite server over HTTPS.
+  "https://localhost:5173",
+  "https://127.0.0.1:5173",
   process.env.FRONTEND_ORIGIN,
 ].filter(Boolean);
 
@@ -31,6 +56,7 @@ app.use(
   }),
 );
 
+<<<<<<< HEAD
 app.use(
   express.json({
     verify: (req, res, buffer) => {
@@ -38,6 +64,56 @@ app.use(
     },
   }),
 );
+=======
+const parseWebhookBody = (req, res, next) => {
+  if (!req.originalUrl.startsWith(WEBHOOK_PATH)) {
+    return express.json({ limit: "1mb" })(req, res, next);
+  }
+
+  return express.raw({ type: "*/*", limit: "1mb" })(req, res, () => {
+    try {
+      // express.raw inflates gzip and deflate before this callback runs.
+      const compressedBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || "");
+      const encoding = (req.get("content-encoding") || "identity").toLowerCase();
+      const body = decodeWebhookBuffer(compressedBody, encoding);
+      req.rawBody = body.toString("utf8");
+      const contentType = (req.get("content-type") || "").toLowerCase();
+      const trimmedBody = req.rawBody.trim();
+      const isJweBody = isJwe(trimmedBody);
+      if (isJweBody || !contentType.includes("json") || trimmedBody.length === 0) {
+        req.body = isJweBody || !contentType.includes("json") ? req.rawBody : {};
+      } else {
+        try {
+          req.body = JSON.parse(trimmedBody);
+        } catch (error) {
+          // EBC2 can send an opaque binary test body while labeling it JSON. Keep it
+          // available for diagnostics and let the webhook route acknowledge it.
+          req.webhookBodyParseError = error.message;
+          req.body = req.rawBody;
+        }
+      }
+      next();
+    } catch (error) {
+      console.error(
+        "[webhook] Unable to decode request body",
+        JSON.stringify({
+          contentEncoding: req.get("content-encoding") || "identity",
+          contentType: req.get("content-type") || null,
+          error: error.message,
+        }),
+      );
+      req.webhookBodyParseError = error.message;
+      req.body = req.rawBody || {};
+      next();
+    }
+  });
+};
+
+app.use(parseWebhookBody);
+
+// Response MLE notifications can arrive as a raw JWE instead of JSON.
+app.use(express.text({ type: ["text/plain", "application/jwt", "application/jwe", "application/octet-stream"], limit: "1mb" }));
+>>>>>>> main
 
 // These values are used to authenticate server-to-server requests to CyberSource.
 const HOST = process.env.CYBERSOURCE_HOST;
@@ -203,6 +279,29 @@ const normalizeCheckoutPayload = (rawPayload) => {
   }
 
   delete payload.orderInformation;
+
+  // UC only emits `uc.orders.transactionresults` for orders it can correlate, so
+  // every session needs a client reference code. Generate one when the caller omits it.
+  const clientReference =
+    payload.data.clientReferenceInformation && typeof payload.data.clientReferenceInformation === "object"
+      ? payload.data.clientReferenceInformation
+      : {};
+
+  if (typeof clientReference.code !== "string" || clientReference.code.trim().length === 0) {
+    payload.data.clientReferenceInformation = {
+      ...clientReference,
+      code: `uc-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
+    };
+  }
+
+  // Avoid leaving CAPTURE orders pending in payer authentication unless 3DS is explicitly enabled.
+  if (payload.completeMandate && typeof payload.completeMandate === "object" && !payload.completeMandate.consumerAuthentication) {
+    payload.completeMandate = {
+      ...payload.completeMandate,
+      consumerAuthentication: process.env.UC_CONSUMER_AUTHENTICATION || "NONE",
+    };
+  }
+
   return payload;
 };
 
