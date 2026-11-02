@@ -54,6 +54,8 @@ const WEBHOOK_PATH = "/webhook/cybersource";
 const WEBHOOK_SIGNING_KEY = process.env.CYBERSOURCE_WEBHOOK_SIGNING_KEY;
 // Optional replay protection window; EBC2 timestamps are epoch milliseconds.
 const WEBHOOK_MAX_SKEW_MS = Number(process.env.CYBERSOURCE_WEBHOOK_MAX_SKEW_MS || 0);
+// Identifies how long the current serverless instance has been alive.
+const STARTED_AT = new Date().toISOString();
 
 const decodeJwtPayload = (token) => {
   // Payment results are JWTs; decode the payload for verification and API consumers.
@@ -440,12 +442,52 @@ const cyberSourceWebhookHealthCheck = (req, res) => {
   return res.status(200).json({ status: "ok", endpoint: WEBHOOK_PATH });
 };
 
+// Serverless instances are reused, so a small ring buffer makes deliveries
+// observable even when the log UI is hard to filter.
+const recentWebhookNotifications = [];
+const WEBHOOK_DEBUG_TOKEN = process.env.CYBERSOURCE_WEBHOOK_DEBUG_TOKEN;
+
+const recordWebhookNotification = (entry) => {
+  recentWebhookNotifications.unshift(entry);
+
+  if (recentWebhookNotifications.length > 20) {
+    recentWebhookNotifications.pop();
+  }
+};
+
+const cyberSourceWebhookDebug = (req, res) => {
+  if (!WEBHOOK_DEBUG_TOKEN || req.query.token !== WEBHOOK_DEBUG_TOKEN) {
+    return res.status(404).json({ error: "Not found" });
+  }
+
+  return res.status(200).json({
+    instanceStartedAt: STARTED_AT,
+    count: recentWebhookNotifications.length,
+    notifications: recentWebhookNotifications,
+  });
+};
+
 const receiveCyberSourceWebhook = (req, res) => {
   // EBC2 retries when the endpoint is slow or returns 4xx/5xx, so keep this fast.
   const rawBody = typeof req.body === "string" ? req.body.trim() : "";
 
   let notification = req.body && typeof req.body === "object" ? req.body : {};
   let wasEncrypted = false;
+  let eventType = null;
+  let webhookId = null;
+
+  const respond = (status, payload, detail) => {
+    recordWebhookNotification({
+      receivedAt: new Date().toISOString(),
+      method: req.method,
+      eventType,
+      webhookId,
+      status,
+      detail: detail || payload.reason || payload.error || null,
+    });
+
+    return res.status(status).json(payload);
+  };
 
   // Response MLE sends either `{ encData: "<JWE>" }` or the bare JWE as the body.
   const encryptedPayload = notification.encData || (isJwe(rawBody) ? rawBody : null);
@@ -453,7 +495,7 @@ const receiveCyberSourceWebhook = (req, res) => {
   if (encryptedPayload) {
     if (!isResponseMleConfigured()) {
       console.warn("[webhook] Received an encrypted notification but Response MLE is not configured.");
-      return res.status(200).json({ status: "ignored", reason: "Encrypted payload requires Response MLE decryption." });
+      return respond(200, { status: "ignored", reason: "Encrypted payload requires Response MLE decryption." });
     }
 
     try {
@@ -461,12 +503,12 @@ const receiveCyberSourceWebhook = (req, res) => {
       wasEncrypted = true;
     } catch (error) {
       console.error("[webhook] Failed to decrypt notification:", error.message);
-      return res.status(400).json({ status: "rejected", error: "Unable to decrypt the notification payload." });
+      return respond(400, { status: "rejected", error: "Unable to decrypt the notification payload." }, error.message);
     }
   }
 
-  const eventType = notification.eventType || null;
-  const webhookId = notification.webhookId || null;
+  eventType = notification.eventType || null;
+  webhookId = notification.webhookId || null;
 
   if (wasEncrypted) {
     // An encrypted body has no plaintext payload to sign; a successful decryption
@@ -480,7 +522,7 @@ const receiveCyberSourceWebhook = (req, res) => {
 
     if (!verification.valid) {
       console.warn(`[webhook] Rejected notification (webhookId=${webhookId}): ${verification.reason}`);
-      return res.status(401).json({ status: "rejected", error: verification.reason });
+      return respond(401, { status: "rejected", error: verification.reason }, verification.reason);
     }
   } else {
     console.warn("[webhook] CYBERSOURCE_WEBHOOK_SIGNING_KEY is not set; accepting unverified notification.");
@@ -490,7 +532,7 @@ const receiveCyberSourceWebhook = (req, res) => {
 
   console.log(`[webhook] ${eventType || "unknown event"} (webhookId=${webhookId})`, JSON.stringify(summarizeWebhookTransaction(transactionResult)));
 
-  return res.status(200).json({ status: "received", eventType, webhookId });
+  return respond(200, { status: "received", eventType, webhookId });
 };
 
 app.post("/checkout-session", createCheckoutSession);
@@ -510,6 +552,9 @@ app.use(WEBHOOK_PATH, (req, res, next) => {
 app.get(WEBHOOK_PATH, cyberSourceWebhookHealthCheck);
 
 app.post(WEBHOOK_PATH, receiveCyberSourceWebhook);
+
+// Debug helper: shows what this function instance actually received.
+app.get(`${WEBHOOK_PATH}/recent`, cyberSourceWebhookDebug);
 
 // Vercel imports the Express app in production; listen locally for development only.
 if (process.env.NODE_ENV !== "production") {
