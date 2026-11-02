@@ -62,7 +62,10 @@ const call = async (method, requestPath, body) => {
     } catch (jwtError) {
       return {
         status: jwtError.response?.status || signatureError.response?.status || 0,
-        error: jwtError.response?.data || signatureError.response?.data || jwtError.message,
+        error: {
+          httpSignature: signatureError.response?.data || signatureError.message,
+          jwt: jwtError.response?.data || jwtError.message,
+        },
       };
     }
   }
@@ -70,78 +73,11 @@ const call = async (method, requestPath, body) => {
 
 const [command, argument] = process.argv.slice(2);
 
-const fs = require("fs");
-const ENV_PATH = path.join(__dirname, "..", ".env");
-const WEBHOOK_URL = argument || "https://unified-checkout-backend.vercel.app/webhook/cybersource";
-
-const upsertEnv = (key, value) => {
-  const content = fs.readFileSync(ENV_PATH, "utf8");
-  const line = `${key} = ${value}`;
-  const pattern = new RegExp(`^${key} *=.*$`, "m");
-
-  fs.writeFileSync(ENV_PATH, pattern.test(content) ? content.replace(pattern, line) : `${content.trimEnd()}\n${line}\n`);
-};
-
-const mask = (value) => (value ? `${value.slice(0, 4)}…${value.slice(-4)}` : "");
-
-const createSubscription = async () => {
-  // 1. Generate the egress symmetric key EBC2 uses to sign notifications.
-  const keyResult = await call("POST", "/kms/egress/v2/keys-sym", {
-    clientRequestAction: "CREATE",
-    keyInformation: { provider: "nrtd", tenant: MERCHANT_ID, keyType: "sharedSecret", organizationId: MERCHANT_ID },
-  });
-
-  if (keyResult.status !== 201 && keyResult.status !== 200) {
-    console.log(`key generation failed: status ${keyResult.status}`);
-    console.log(JSON.stringify(keyResult.data ?? keyResult.error, null, 2));
-    return;
-  }
-
-  const keyInformation = keyResult.data?.keyInformation || {};
-
-  // 2. Create the subscription using the new key.
-  const subscription = await call("POST", "/notification-subscriptions/v2/webhooks", {
-    name: "Unified Checkout (api)",
-    description: "Unified Checkout transaction results",
-    organizationId: MERCHANT_ID,
-    products: [{ productId: "unifiedCheckout", eventTypes: ["uc.orders.transactionresults"] }],
-    webhookUrl: WEBHOOK_URL,
-    healthCheckUrl: WEBHOOK_URL,
-    notificationScope: "SELF",
-    retryPolicy: {
-      algorithm: "ARITHMETIC",
-      firstRetry: 1,
-      interval: 1,
-      numberOfRetries: 3,
-      deactivateFlag: "false",
-      repeatSequenceCount: 0,
-      repeatSequenceWaitTime: 0,
-    },
-    securityPolicy: { securityType: "key" },
-  });
-
-  console.log(`key status ${keyResult.status}, keyId ${keyInformation.keyId}, expires ${keyInformation.expirationDate}`);
-  console.log(`subscription status ${subscription.status}`);
-  console.log(JSON.stringify(subscription.data ?? subscription.error, null, 2));
-
-  if (subscription.status !== 201 || !keyInformation.key) {
-    return;
-  }
-
-  upsertEnv("CYBERSOURCE_WEBHOOK_SIGNING_KEY", keyInformation.key);
-  upsertEnv("CYBERSOURCE_WEBHOOK_KEY_ID", keyInformation.keyId || "");
-  upsertEnv("CYBERSOURCE_WEBHOOK_ID", subscription.data?.webhookId || "");
-
-  console.log(`\nwritten to .env: CYBERSOURCE_WEBHOOK_SIGNING_KEY=${mask(keyInformation.key)} (copy this value into Vercel)`);
-};
+const DEFAULT_WEBHOOK_ID = "5df62cf3-cbaa-58f7-e063-9e588e0a65b2";
+const configuredWebhookId = process.env.CYBERSOURCE_WEBHOOK_ID || DEFAULT_WEBHOOK_ID;
 
 (async () => {
   let result;
-
-  if (command === "create") {
-    await createSubscription();
-    return;
-  }
 
   if (command === "list" || !command) {
     result = await call("GET", `/notification-subscriptions/v2/webhooks?organizationId=${encodeURIComponent(MERCHANT_ID)}`);
@@ -149,11 +85,11 @@ const createSubscription = async () => {
     result = await call("GET", `/notification-subscriptions/v2/products/${encodeURIComponent(MERCHANT_ID)}`);
   } else if (command === "test") {
     // Sends a sample notification to the subscription's webhook URL.
-    result = await call("POST", `/notification-subscriptions/v1/webhooks/${encodeURIComponent(argument)}`, {});
+    result = await call("POST", `/notification-subscriptions/v1/webhooks/${encodeURIComponent(argument || configuredWebhookId)}`, {});
   } else if (command === "delete") {
-    result = await call("DELETE", `/notification-subscriptions/v2/webhooks/${encodeURIComponent(argument)}`);
+    result = await call("DELETE", `/notification-subscriptions/v2/webhooks/${encodeURIComponent(argument || configuredWebhookId)}`);
   } else {
-    console.log("Usage: node scripts/webhooks.js [list|products|create [url]|test <webhookId>|delete <webhookId>]");
+    console.log("Usage: node scripts/webhooks.js [list|products|test [webhookId]|delete [webhookId]]");
     process.exit(1);
   }
 

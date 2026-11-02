@@ -7,7 +7,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const zlib = require("zlib");
 const axios = require("axios");
-const { isConfigured: isResponseMleConfigured, isJwe, decryptNotification } = require("./responseMle");
+const { handleWebhook, healthCheck } = require("./webhook");
 
 const app = express();
 const WEBHOOK_PATH = "/webhook/cybersource";
@@ -56,54 +56,14 @@ app.use(
   }),
 );
 
-const parseWebhookBody = (req, res, next) => {
-  if (!req.originalUrl.startsWith(WEBHOOK_PATH)) {
-    return express.json({ limit: "1mb" })(req, res, next);
-  }
-
-  return express.raw({ type: "*/*", limit: "1mb" })(req, res, () => {
-    try {
-      // express.raw inflates gzip and deflate before this callback runs.
-      const compressedBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || "");
-      const encoding = (req.get("content-encoding") || "identity").toLowerCase();
-      const body = decodeWebhookBuffer(compressedBody, encoding);
-      req.rawBody = body.toString("utf8");
-      const contentType = (req.get("content-type") || "").toLowerCase();
-      const trimmedBody = req.rawBody.trim();
-      const isJweBody = isJwe(trimmedBody);
-      if (isJweBody || !contentType.includes("json") || trimmedBody.length === 0) {
-        req.body = isJweBody || !contentType.includes("json") ? req.rawBody : {};
-      } else {
-        try {
-          req.body = JSON.parse(trimmedBody);
-        } catch (error) {
-          // EBC2 can send an opaque binary test body while labeling it JSON. Keep it
-          // available for diagnostics and let the webhook route acknowledge it.
-          req.webhookBodyParseError = error.message;
-          req.body = req.rawBody;
-        }
-      }
-      next();
-    } catch (error) {
-      console.error(
-        "[webhook] Unable to decode request body",
-        JSON.stringify({
-          contentEncoding: req.get("content-encoding") || "identity",
-          contentType: req.get("content-type") || null,
-          error: error.message,
-        }),
-      );
-      req.webhookBodyParseError = error.message;
-      req.body = req.rawBody || {};
-      next();
-    }
-  });
-};
-
-app.use(parseWebhookBody);
-
-// Response MLE notifications can arrive as a raw JWE instead of JSON.
-app.use(express.text({ type: ["text/plain", "application/jwt", "application/jwe", "application/octet-stream"], limit: "1mb" }));
+app.use(
+  express.json({
+    verify: (req, res, buffer) => {
+      req.rawBody = buffer.toString("utf8");
+    },
+  }),
+);
+app.use(express.text({ type: ["text/*", "application/jose", "application/jose+json"] }));
 
 // These values are used to authenticate server-to-server requests to CyberSource.
 const HOST = process.env.CYBERSOURCE_HOST;
@@ -444,6 +404,9 @@ const verifyPaymentResult = async (req, res) => {
 app.post("/checkout-session", createCheckoutSession);
 
 app.post("/verify-payment", verifyPaymentResult);
+
+app.get("/webhook/cybersource", healthCheck);
+app.post("/webhook/cybersource", handleWebhook);
 
 // Vercel imports the Express app in production; listen locally for development only.
 if (process.env.NODE_ENV !== "production") {
