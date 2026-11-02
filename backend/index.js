@@ -35,7 +35,16 @@ app.use(
   }),
 );
 
-app.use(express.json());
+app.use(
+  express.json({
+    limit: "1mb",
+    verify: (req, res, buffer) => {
+      if (req.originalUrl.startsWith(WEBHOOK_PATH)) {
+        req.rawBody = buffer.toString("utf8");
+      }
+    },
+  }),
+);
 
 // Response MLE notifications can arrive as a raw JWE instead of JSON.
 app.use(express.text({ type: ["text/plain", "application/jwt", "application/jwe", "application/octet-stream"], limit: "1mb" }));
