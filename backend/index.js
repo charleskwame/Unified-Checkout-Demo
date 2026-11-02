@@ -5,11 +5,30 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { createHeaders } = require("cybersource-auth");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const zlib = require("zlib");
 const axios = require("axios");
 const { isConfigured: isResponseMleConfigured, isJwe, decryptNotification } = require("./responseMle");
 
 const app = express();
 const WEBHOOK_PATH = "/webhook/cybersource";
+
+const decodeWebhookBuffer = (buffer, encoding) => {
+  const attempts = [];
+
+  if (encoding === "gzip" || encoding === "x-gzip" || encoding === "identity") attempts.push(() => zlib.gunzipSync(buffer));
+  if (encoding === "deflate" || encoding === "identity") attempts.push(() => zlib.inflateSync(buffer));
+  if (encoding === "br" || encoding === "identity") attempts.push(() => zlib.brotliDecompressSync(buffer));
+
+  for (const decode of attempts) {
+    try {
+      return decode();
+    } catch {
+      // Try the next supported wire format.
+    }
+  }
+
+  return buffer;
+};
 // Only the deployed checkout clients and local Vite development server may call this API.
 const allowedOrigins = [
   "https://unified-checkout-frontend.vercel.app",
@@ -44,10 +63,20 @@ const parseWebhookBody = (req, res, next) => {
   return express.raw({ type: "*/*", limit: "1mb" })(req, res, () => {
     try {
       // express.raw inflates gzip and deflate before this callback runs.
-      const body = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || "");
+      const compressedBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || "");
+      const encoding = (req.get("content-encoding") || "identity").toLowerCase();
+      const body = decodeWebhookBuffer(compressedBody, encoding);
       req.rawBody = body.toString("utf8");
       const contentType = (req.get("content-type") || "").toLowerCase();
-      req.body = contentType.includes("json") ? JSON.parse(req.rawBody) : req.rawBody;
+      const trimmedBody = req.rawBody.trim();
+      const isJweBody = isJwe(trimmedBody);
+      req.body = isJweBody
+        ? req.rawBody
+        : contentType.includes("json") && trimmedBody.length > 0
+          ? JSON.parse(trimmedBody)
+          : contentType.includes("json")
+            ? {}
+            : req.rawBody;
       next();
     } catch (error) {
       console.error(
