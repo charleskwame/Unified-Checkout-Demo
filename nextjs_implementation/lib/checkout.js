@@ -20,6 +20,11 @@ export function normalizeCheckoutPayload(rawPayload) {
     payload.data.clientReferenceInformation = { ...clientReference, code: `uc-${Date.now()}-${randomUUID().slice(0, 8)}` };
   }
 
+  // Avoid leaving CAPTURE orders pending in payer authentication unless 3DS is explicitly enabled.
+  if (payload.completeMandate && typeof payload.completeMandate === "object" && !payload.completeMandate.consumerAuthentication) {
+    payload.completeMandate = { ...payload.completeMandate, consumerAuthentication: process.env.UC_CONSUMER_AUTHENTICATION || "NONE" };
+  }
+
   return payload;
 }
 

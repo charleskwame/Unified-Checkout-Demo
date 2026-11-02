@@ -229,6 +229,14 @@ const normalizeCheckoutPayload = (rawPayload) => {
     };
   }
 
+  // Avoid leaving CAPTURE orders pending in payer authentication unless 3DS is explicitly enabled.
+  if (payload.completeMandate && typeof payload.completeMandate === "object" && !payload.completeMandate.consumerAuthentication) {
+    payload.completeMandate = {
+      ...payload.completeMandate,
+      consumerAuthentication: process.env.UC_CONSUMER_AUTHENTICATION || "NONE",
+    };
+  }
+
   return payload;
 };
 
