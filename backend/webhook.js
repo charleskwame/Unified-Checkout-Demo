@@ -86,13 +86,14 @@ const handleWebhook = (req, res) => {
     const body = parseBody(req.body, req.rawBody);
     const jwe = getJwe(body);
     const signatureHeader = req.get("v-c-signature");
+    const securityMode = String(process.env.CYBERSOURCE_WEBHOOK_SECURITY || "none").toLowerCase();
 
     let event;
 
     if (jwe) {
       event = decryptNotification(jwe);
     } else {
-      if (signatureHeader) verifySignature(body, signatureHeader);
+      if (securityMode === "key") verifySignature(body, signatureHeader);
       event = body?.payload ?? body;
     }
 
