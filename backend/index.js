@@ -31,7 +31,13 @@ app.use(
   }),
 );
 
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, res, buffer) => {
+      req.rawBody = buffer.toString("utf8");
+    },
+  }),
+);
 
 // These values are used to authenticate server-to-server requests to CyberSource.
 const HOST = process.env.CYBERSOURCE_HOST;
@@ -231,6 +237,56 @@ const normalizeTransactionStatus = (transaction) => {
   };
 };
 
+const verifyWebhookSignature = (req) => {
+  const signingKey = process.env.CYBERSOURCE_WEBHOOK_SIGNING_KEY?.trim();
+
+  if (!signingKey) {
+    return true;
+  }
+
+  const signatureHeader = req.get("v-c-signature");
+  const signatureParts = Object.fromEntries(
+    (signatureHeader || "")
+      .split(";")
+      .map((part) => part.split("=", 2))
+      .filter(([key, value]) => key && value),
+  );
+  const timestamp = signatureParts.t;
+  const providedSignature = signatureParts.sig;
+
+  if (!timestamp || !providedSignature) {
+    return false;
+  }
+
+  const maxSkewMs = Number(process.env.CYBERSOURCE_WEBHOOK_MAX_SKEW_MS || 0);
+  if (maxSkewMs > 0 && Math.abs(Date.now() - Number(timestamp)) > maxSkewMs) {
+    return false;
+  }
+
+  const payload = req.body?.payload;
+  const signedContent = `${timestamp}.${JSON.stringify(payload)}`;
+  const expectedSignature = crypto.createHmac("sha256", Buffer.from(signingKey, "base64")).update(signedContent).digest("base64");
+
+  const expectedBuffer = Buffer.from(expectedSignature);
+  const providedBuffer = Buffer.from(providedSignature);
+
+  return expectedBuffer.length === providedBuffer.length && crypto.timingSafeEqual(expectedBuffer, providedBuffer);
+};
+
+const receiveCyberSourceWebhook = (req, res) => {
+  if (!verifyWebhookSignature(req)) {
+    return res.status(401).json({ error: "Invalid CyberSource webhook signature." });
+  }
+
+  const event = req.body?.payload || req.body;
+  console.log("CyberSource webhook received:", {
+    eventType: event?.eventType || null,
+    webhookId: event?.webhookId || req.body?.webhookId || null,
+  });
+
+  return res.status(200).json({ received: true });
+};
+
 const verifyPaymentResult = async (req, res) => {
   let requestedTransactionId = null;
   let requestedOrderCode = null;
@@ -349,6 +405,9 @@ const verifyPaymentResult = async (req, res) => {
 app.post("/checkout-session", createCheckoutSession);
 
 app.post("/verify-payment", verifyPaymentResult);
+
+app.get("/webhook/cybersource", (req, res) => res.status(200).json({ status: "ok" }));
+app.post("/webhook/cybersource", receiveCyberSourceWebhook);
 
 // Vercel imports the Express app in production; listen locally for development only.
 if (process.env.NODE_ENV !== "production") {
