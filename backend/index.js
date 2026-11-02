@@ -5,10 +5,31 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 const { createHeaders } = require("cybersource-auth");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const zlib = require("zlib");
 const axios = require("axios");
 const { handleWebhook, healthCheck } = require("./webhook");
 
 const app = express();
+const WEBHOOK_PATH = "/webhook/cybersource";
+
+const decodeWebhookBuffer = (buffer, encoding) => {
+  const attempts = [];
+
+  if (encoding === "gzip" || encoding === "x-gzip" || encoding === "identity") attempts.push(() => zlib.gunzipSync(buffer));
+  if (encoding === "deflate" || encoding === "identity") attempts.push(() => zlib.inflateSync(buffer));
+  if (encoding === "deflate" || encoding === "identity") attempts.push(() => zlib.inflateRawSync(buffer));
+  if (encoding === "br" || encoding === "identity") attempts.push(() => zlib.brotliDecompressSync(buffer));
+
+  for (const decode of attempts) {
+    try {
+      return decode();
+    } catch {
+      // Try the next supported wire format.
+    }
+  }
+
+  return buffer;
+};
 // Only the deployed checkout clients and local Vite development server may call this API.
 const allowedOrigins = [
   "https://unified-checkout-frontend.vercel.app",
