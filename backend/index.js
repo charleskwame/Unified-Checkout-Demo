@@ -472,6 +472,9 @@ const receiveCyberSourceWebhook = (req, res) => {
     // An encrypted body has no plaintext payload to sign; a successful decryption
     // with the merchant private key is the authenticity check.
     console.log(`[webhook] Decrypted Response MLE payload (webhookId=${webhookId}); v-c-signature check skipped.`);
+  } else if (!notification.payload) {
+    // EBC2's "test webhook" message has no `payload` object, so there is nothing to sign.
+    console.log(`[webhook] Test message received (webhookId=${webhookId}); v-c-signature check skipped.`);
   } else if (WEBHOOK_SIGNING_KEY) {
     const verification = verifyWebhookSignature(req.get("v-c-signature"), notification.payload);
 
@@ -493,6 +496,15 @@ const receiveCyberSourceWebhook = (req, res) => {
 app.post("/checkout-session", createCheckoutSession);
 
 app.post("/verify-payment", verifyPaymentResult);
+
+// Log every webhook hit so health-check polls and notification deliveries are
+// distinguishable in the Vercel runtime logs.
+app.use(WEBHOOK_PATH, (req, res, next) => {
+  console.log(
+    `[webhook] ${req.method} ${req.originalUrl} content-type=${req.get("content-type") || "-"} signature=${req.get("v-c-signature") ? "present" : "absent"} ua=${req.get("user-agent") || "-"}`,
+  );
+  next();
+});
 
 // EBC2 webhook endpoint: GET is the health check, POST delivers notifications.
 app.get(WEBHOOK_PATH, cyberSourceWebhookHealthCheck);
