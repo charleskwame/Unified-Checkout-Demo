@@ -219,16 +219,6 @@ const normalizeCheckoutPayload = (rawPayload) => {
     };
   }
 
-  // Payer authentication holds a transaction in PENDING until the challenge completes,
-  // which suppresses final status reporting. Set it explicitly; override with
-  // UC_CONSUMER_AUTHENTICATION=3DS when you want SCA.
-  if (payload.completeMandate && typeof payload.completeMandate === "object" && !payload.completeMandate.consumerAuthentication) {
-    payload.completeMandate = {
-      ...payload.completeMandate,
-      consumerAuthentication: process.env.UC_CONSUMER_AUTHENTICATION || "NONE",
-    };
-  }
-
   return payload;
 };
 
