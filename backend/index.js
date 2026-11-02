@@ -214,6 +214,21 @@ const normalizeCheckoutPayload = (rawPayload) => {
   }
 
   delete payload.orderInformation;
+
+  // UC only emits `uc.orders.transactionresults` for orders it can correlate, so
+  // every session needs a client reference code. Generate one when the caller omits it.
+  const clientReference =
+    payload.data.clientReferenceInformation && typeof payload.data.clientReferenceInformation === "object"
+      ? payload.data.clientReferenceInformation
+      : {};
+
+  if (typeof clientReference.code !== "string" || clientReference.code.trim().length === 0) {
+    payload.data.clientReferenceInformation = {
+      ...clientReference,
+      code: `uc-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
+    };
+  }
+
   return payload;
 };
 
