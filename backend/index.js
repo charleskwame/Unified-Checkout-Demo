@@ -345,19 +345,14 @@ const verifyPaymentResult = async (req, res) => {
     };
 
     const findTransactionIdByOrderCode = async (code) => {
-      // The SDK can return the payer-authentication setup ID before the auth/bill record.
+      // Transaction Details can lag behind the payment, so fall back to searching by order reference.
       const searchPath = "/tss/v2/searches";
-      const rawBody = JSON.stringify({ query: `clientReferenceInformation.code:"${code}"`, offset: 0, limit: 20, sort: "submitTimeUtc:desc" });
+      const rawBody = JSON.stringify({ query: `clientReferenceInformation.code:"${code}"`, offset: 0, limit: 1 });
       const headers = createHeaders(MERCHANT_ID, normalizedHost, "post", searchPath, rawBody, API_KEY_ID, SHARED_SECRET);
 
       const response = await axios.post(`https://${normalizedHost}${searchPath}`, rawBody, { headers, timeout: 10000 });
-      const summaries = response.data?._embedded?.transactionSummaries || [];
-      const completed = summaries.find((summary) => {
-        const applications = summary.applicationInformation?.applications || [];
-        return applications.some((application) => application?.name === "ics_auth" || application?.name === "ics_bill");
-      });
 
-      return completed?.id || summaries[0]?.id || null;
+      return response.data?._embedded?.transactionSummaries?.[0]?.id || null;
     };
 
     let response;
@@ -379,18 +374,7 @@ const verifyPaymentResult = async (req, res) => {
       response = await fetchTransaction(resolvedTransactionId);
     }
 
-    let transaction = response.data;
-    const applications = transaction.applicationInformation?.applications || [];
-    const isPayerAuthenticationSetup = applications.length > 0 && applications.every((application) => application?.name === "ics_pa_setup");
-
-    if (isPayerAuthenticationSetup && orderCode) {
-      const resolvedTransactionId = await findTransactionIdByOrderCode(orderCode);
-      if (resolvedTransactionId && resolvedTransactionId !== transactionId) {
-        transactionId = resolvedTransactionId;
-        response = await fetchTransaction(resolvedTransactionId);
-        transaction = response.data;
-      }
-    }
+    const transaction = response.data;
 
     // Return the full CyberSource response plus a normalized summary for the checkout clients.
     return res.status(response.status).json({
