@@ -426,20 +426,21 @@ const handleCybersourceWebhook = async (req, res) => {
       payload = decryptNotification(rawPayload);
     }
 
-    // Unified Checkout nests transaction data under payload.transactionResult.
-    // Top-level payload.transactionResult.{id,status,outcome} are the summary fields;
-    // payload.transactionResult.details contains the full CyberSource payment response.
-    const txResult = payload?.transactionResult || {};
-    const details = txResult.details || {};
+    // Support both direct payload structure:
+    // payload = { id, status, outcome, details: { processorInformation, paymentInformation, riskInformation, ... } }
+    // and wrapped transactionResult structure:
+    // payload = { transactionResult: { id, status, details: { ... } } }
+    const txData = payload?.transactionResult || payload || {};
+    const details = txData.details || {};
 
-    const transactionId = txResult.id || details.id || null;
-    const status = txResult.status || txResult.outcome || null;
+    const transactionId = txData.id || details.id || null;
+    const status = txData.status || txData.outcome || null;
+    const processorTransactionId = details.processorInformation?.transactionId || details.processorInformation?.systemTraceAuditNumber || null;
+    const cardType = details.paymentInformation?.card?.type || details.paymentAccountInformation?.card?.type || details.paymentAccountInformation?.card?.brandName || null;
+    const riskScore = details.riskInformation?.score?.result || null;
     const orderCode = details.clientReferenceInformation?.code || null;
     const amount = details.orderInformation?.amountDetails?.totalAmount || null;
     const currency = details.orderInformation?.amountDetails?.currency || null;
-    const cardBrand = details.paymentAccountInformation?.card?.brandName || details.paymentInformation?.card?.type || null;
-    const processorResponseCode = details.processorInformation?.responseCode || null;
-    const riskScore = details.riskInformation?.score?.result || null;
 
     console.log("[CyberSource Webhook] Notification received:", {
       webhookId,
@@ -455,12 +456,12 @@ const handleCybersourceWebhook = async (req, res) => {
       console.log("[CyberSource Webhook] Transaction result:", {
         transactionId,
         status,
+        processorTransactionId,
+        cardType,
+        riskScore,
         orderCode,
         amount,
         currency,
-        cardBrand,
-        processorResponseCode,
-        riskScore,
       });
     }
 
