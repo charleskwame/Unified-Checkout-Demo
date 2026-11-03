@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const cors = require("cors");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
@@ -348,20 +348,31 @@ const verifyPaymentResult = async (req, res) => {
 
 const handleCybersourceWebhook = async (req, res) => {
   try {
-    const { webhookId, eventType, eventDate, payload } = req.body || {};
+    const { webhookId, eventType, eventDate, transactionTraceId, retryNumber, payload } = req.body || {};
+
+    // Transaction data is nested under payload.data per the CyberSource webhook spec.
+    const data = payload?.data || {};
+
+    const transactionId = data.id || null;
+    const status =
+      data.status ||
+      data.applicationInformation?.status ||
+      data.processorInformation?.responseCode ||
+      null;
 
     console.log("[CyberSource Webhook] Notification received:", {
       webhookId,
       eventType,
       eventDate,
-      transactionId: payload?.id,
-      status: payload?.status || payload?.outcome,
+      transactionTraceId,
+      retryNumber,
+      transactionId,
+      status,
     });
 
     if (eventType === "uc.orders.transactionresults") {
-      const transactionId = payload?.id;
-      const status = payload?.status || payload?.outcome;
       console.log(`[CyberSource Webhook] Order ${transactionId} processed with status: ${status}`);
+      console.log("[CyberSource Webhook] Full payload data:", JSON.stringify(data, null, 2));
     }
 
     // Respond immediately with 200 OK so CyberSource knows delivery succeeded
