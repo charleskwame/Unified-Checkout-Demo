@@ -409,6 +409,9 @@ const handleCybersourceWebhook = async (req, res) => {
       return res.status(401).json({ error: "Invalid webhook signature" });
     }
 
+    // Log the entire raw body so we can see every single key CyberSource sends:
+    console.log("[CyberSource Webhook] Received req.body:", JSON.stringify(req.body, null, 2));
+
     // CyberSource Unified Checkout webhook body shape:
     // { organizationId, webhookId, productId, eventType, eventDate, payload: <JWE string or plain object> }
     const { webhookId, eventType, eventDate, organizationId, productId, payload: rawPayload } = req.body || {};
@@ -424,6 +427,13 @@ const handleCybersourceWebhook = async (req, res) => {
       }
 
       payload = decryptNotification(rawPayload);
+    }
+
+    // CyberSource Manual Test webhook sends:
+    // { "payloads": { "testPayload": { "message": "Yay! Your webhook integration worked! ..." } } }
+    if (req.body?.payloads?.testPayload) {
+      console.log("[CyberSource Webhook] Manual Test verified successfully:", req.body.payloads.testPayload.message);
+      return res.status(200).json({ received: true, test: true });
     }
 
     // Support both direct payload structure:
