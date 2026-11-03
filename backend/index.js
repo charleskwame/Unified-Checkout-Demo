@@ -354,13 +354,14 @@ const { isConfigured: mleIsConfigured, isJwe, decryptNotification } = require(".
 const verifyWebhookSignature = (signatureHeader, rawBody) => {
   const WEBHOOK_SECRET = process.env.CYBERSOURCE_WEBHOOK_SECRET;
 
+  // When no secret is configured the webhook subscription uses "No Auth" in EBC2,
+  // so CyberSource sends no signature header. Skip verification in that case.
   if (!WEBHOOK_SECRET) {
-    console.warn("[CyberSource Webhook] CYBERSOURCE_WEBHOOK_SECRET is not set — skipping signature verification.");
     return true;
   }
 
   if (!signatureHeader) {
-    console.warn("[CyberSource Webhook] v-c-signature header is missing.");
+    console.warn("[CyberSource Webhook] v-c-signature header is missing — expected because CYBERSOURCE_WEBHOOK_SECRET is set.");
     return false;
   }
 
