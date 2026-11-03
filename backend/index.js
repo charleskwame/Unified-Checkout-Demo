@@ -346,49 +346,105 @@ const verifyPaymentResult = async (req, res) => {
   }
 };
 
+const { isConfigured: mleIsConfigured, isJwe, decryptNotification } = require("./responseMle");
+
+// Verifies the v-c-signature header to confirm the notification came from CyberSource.
+// Signature format: "t=<timestamp>;keyId=<uuid>;sig=<base64>"
+// HMAC-SHA256 over "<timestamp>.<raw_body>" using the webhook shared secret.
+const verifyWebhookSignature = (signatureHeader, rawBody) => {
+  const WEBHOOK_SECRET = process.env.CYBERSOURCE_WEBHOOK_SECRET;
+
+  if (!WEBHOOK_SECRET) {
+    console.warn("[CyberSource Webhook] CYBERSOURCE_WEBHOOK_SECRET is not set — skipping signature verification.");
+    return true;
+  }
+
+  if (!signatureHeader) {
+    console.warn("[CyberSource Webhook] v-c-signature header is missing.");
+    return false;
+  }
+
+  const parts = Object.fromEntries(
+    signatureHeader.split(";").map((part) => {
+      const eqIdx = part.indexOf("=");
+      return [part.slice(0, eqIdx).trim(), part.slice(eqIdx + 1).trim()];
+    }),
+  );
+
+  const { t: timestamp, sig } = parts;
+
+  if (!timestamp || !sig) {
+    console.warn("[CyberSource Webhook] v-c-signature header is malformed:", signatureHeader);
+    return false;
+  }
+
+  // Reject notifications older than 5 minutes to block replay attacks.
+  const ageMs = Date.now() - Number(timestamp);
+
+  if (ageMs > 5 * 60 * 1000) {
+    console.warn("[CyberSource Webhook] Notification rejected: timestamp is too old.", { ageMs });
+    return false;
+  }
+
+  const message = `${timestamp}.${rawBody}`;
+  const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(message, "utf8").digest("base64");
+
+  // Constant-time comparison to prevent timing attacks.
+  try {
+    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
+  } catch {
+    return false;
+  }
+};
+
 const handleCybersourceWebhook = async (req, res) => {
   try {
-    // CyberSource Unified Checkout webhook body shape:
-    // { eventType, eventTime, merchantId, organizationId, webhookId?, payload: { id, status, amount, currency, ... } }
-    const {
-      webhookId,
-      eventType,
-      eventTime,
-      eventDate,
-      merchantId,
-      organizationId,
-      transactionTraceId,
-      retryNumber,
-      payload,
-    } = req.body || {};
+    // Verify the signature before processing anything.
+    const signatureHeader = req.headers["v-c-signature"];
+    const rawBody = JSON.stringify(req.body);
 
-    // Transaction data sits directly on payload (no nested .data wrapper for this event type).
+    if (!verifyWebhookSignature(signatureHeader, rawBody)) {
+      console.warn("[CyberSource Webhook] Signature verification failed — rejecting request.");
+      return res.status(401).json({ error: "Invalid webhook signature" });
+    }
+
+    // CyberSource Unified Checkout webhook body shape:
+    // { organizationId, webhookId, productId, eventType, eventDate, payload: <JWE string or plain object> }
+    const { webhookId, eventType, eventDate, organizationId, productId, payload: rawPayload } = req.body || {};
+
+    // For Unified Checkout, the payload is MLE-encrypted as a compact JWE string.
+    // Decrypt it when MLE is configured; fall back to treating it as a plain object otherwise.
+    let payload = rawPayload;
+
+    if (isJwe(rawPayload)) {
+      if (!mleIsConfigured()) {
+        console.error("[CyberSource Webhook] Received an encrypted payload but MLE is not configured.");
+        return res.status(500).json({ error: "MLE decryption is not configured." });
+      }
+
+      payload = decryptNotification(rawPayload);
+    }
+
     const transactionId = payload?.id || null;
-    const status = payload?.status || null;
+    const status = payload?.status || payload?.outcome || null;
 
     console.log("[CyberSource Webhook] Notification received:", {
       webhookId,
       eventType,
-      eventTime: eventTime || eventDate,
-      merchantId,
+      eventDate,
       organizationId,
-      transactionTraceId,
-      retryNumber,
+      productId,
       transactionId,
       status,
     });
 
-    if (eventType === "uc.orders.transactionresults" || eventType === "payment.authorization.created") {
-      const amount = payload?.amount || payload?.orderInformation?.amountDetails?.totalAmount || null;
-      const currency = payload?.currency || payload?.orderInformation?.amountDetails?.currency || null;
-      const orderNumber = payload?.orderInformation?.orderNumber || null;
-
-      console.log("[CyberSource Webhook] Transaction summary:", {
+    if (eventType === "uc.orders.transactionresults") {
+      console.log("[CyberSource Webhook] Transaction result:", {
         transactionId,
         status,
-        amount,
-        currency,
-        orderNumber,
+        processorTransactionId: payload?.details?.processorInformation?.transactionId || null,
+        cardType: payload?.details?.paymentInformation?.card?.type || null,
+        riskScore: payload?.details?.riskInformation?.score?.result || null,
       });
     }
 
