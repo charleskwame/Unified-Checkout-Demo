@@ -348,31 +348,48 @@ const verifyPaymentResult = async (req, res) => {
 
 const handleCybersourceWebhook = async (req, res) => {
   try {
-    const { webhookId, eventType, eventDate, transactionTraceId, retryNumber, payload } = req.body || {};
+    // CyberSource Unified Checkout webhook body shape:
+    // { eventType, eventTime, merchantId, organizationId, webhookId?, payload: { id, status, amount, currency, ... } }
+    const {
+      webhookId,
+      eventType,
+      eventTime,
+      eventDate,
+      merchantId,
+      organizationId,
+      transactionTraceId,
+      retryNumber,
+      payload,
+    } = req.body || {};
 
-    // Transaction data is nested under payload.data per the CyberSource webhook spec.
-    const data = payload?.data || {};
-
-    const transactionId = data.id || null;
-    const status =
-      data.status ||
-      data.applicationInformation?.status ||
-      data.processorInformation?.responseCode ||
-      null;
+    // Transaction data sits directly on payload (no nested .data wrapper for this event type).
+    const transactionId = payload?.id || null;
+    const status = payload?.status || null;
 
     console.log("[CyberSource Webhook] Notification received:", {
       webhookId,
       eventType,
-      eventDate,
+      eventTime: eventTime || eventDate,
+      merchantId,
+      organizationId,
       transactionTraceId,
       retryNumber,
       transactionId,
       status,
     });
 
-    if (eventType === "uc.orders.transactionresults") {
-      console.log(`[CyberSource Webhook] Order ${transactionId} processed with status: ${status}`);
-      console.log("[CyberSource Webhook] Full payload data:", JSON.stringify(data, null, 2));
+    if (eventType === "uc.orders.transactionresults" || eventType === "payment.authorization.created") {
+      const amount = payload?.amount || payload?.orderInformation?.amountDetails?.totalAmount || null;
+      const currency = payload?.currency || payload?.orderInformation?.amountDetails?.currency || null;
+      const orderNumber = payload?.orderInformation?.orderNumber || null;
+
+      console.log("[CyberSource Webhook] Transaction summary:", {
+        transactionId,
+        status,
+        amount,
+        currency,
+        orderNumber,
+      });
     }
 
     // Respond immediately with 200 OK so CyberSource knows delivery succeeded
