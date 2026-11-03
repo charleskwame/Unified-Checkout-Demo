@@ -412,8 +412,8 @@ const handleCybersourceWebhook = async (req, res) => {
     // { organizationId, webhookId, productId, eventType, eventDate, payload: <JWE string or plain object> }
     const { webhookId, eventType, eventDate, organizationId, productId, payload: rawPayload } = req.body || {};
 
-    // For Unified Checkout, the payload is MLE-encrypted as a compact JWE string.
-    // Decrypt it when MLE is configured; fall back to treating it as a plain object otherwise.
+    // For Unified Checkout, the payload may arrive as a compact JWE string (MLE enabled)
+    // or as a plain object (sandbox / MLE disabled). Decrypt when needed.
     let payload = rawPayload;
 
     if (isJwe(rawPayload)) {
@@ -425,8 +425,20 @@ const handleCybersourceWebhook = async (req, res) => {
       payload = decryptNotification(rawPayload);
     }
 
-    const transactionId = payload?.id || null;
-    const status = payload?.status || payload?.outcome || null;
+    // Unified Checkout nests transaction data under payload.transactionResult.
+    // Top-level payload.transactionResult.{id,status,outcome} are the summary fields;
+    // payload.transactionResult.details contains the full CyberSource payment response.
+    const txResult = payload?.transactionResult || {};
+    const details = txResult.details || {};
+
+    const transactionId = txResult.id || details.id || null;
+    const status = txResult.status || txResult.outcome || null;
+    const orderCode = details.clientReferenceInformation?.code || null;
+    const amount = details.orderInformation?.amountDetails?.totalAmount || null;
+    const currency = details.orderInformation?.amountDetails?.currency || null;
+    const cardBrand = details.paymentAccountInformation?.card?.brandName || details.paymentInformation?.card?.type || null;
+    const processorResponseCode = details.processorInformation?.responseCode || null;
+    const riskScore = details.riskInformation?.score?.result || null;
 
     console.log("[CyberSource Webhook] Notification received:", {
       webhookId,
@@ -442,9 +454,12 @@ const handleCybersourceWebhook = async (req, res) => {
       console.log("[CyberSource Webhook] Transaction result:", {
         transactionId,
         status,
-        processorTransactionId: payload?.details?.processorInformation?.transactionId || null,
-        cardType: payload?.details?.paymentInformation?.card?.type || null,
-        riskScore: payload?.details?.riskInformation?.score?.result || null,
+        orderCode,
+        amount,
+        currency,
+        cardBrand,
+        processorResponseCode,
+        riskScore,
       });
     }
 
