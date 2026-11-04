@@ -558,6 +558,19 @@ app.use(
   }),
 );
 
+// ---------------------------------------------------------------------------
+// DEBUG LOGGING
+// Set DEBUG_WEBHOOK=true (or leave unset in non-production) to emit verbose
+// step-by-step diagnostics for the CyberSource webhook flow.
+// ---------------------------------------------------------------------------
+const DEBUG_WEBHOOK = process.env.DEBUG_WEBHOOK === "true" || process.env.NODE_ENV !== "production";
+
+const debugLog = (...args) => {
+  if (DEBUG_WEBHOOK) {
+    console.log("[CyberSource Webhook][debug]", ...args);
+  }
+};
+
 // These values are used to authenticate server-to-server requests to CyberSource.
 const HOST = process.env.CYBERSOURCE_HOST;
 const MERCHANT_ID = process.env.CYBERSOURCE_MERCHANT_ID;
@@ -929,16 +942,33 @@ const verifyWebhookSignature = (signatureHeader, rawBody) => {
 };
 
 const handleCybersourceWebhook = async (req, res) => {
+  const startedAt = Date.now();
+
   try {
+    debugLog("Incoming request", {
+      method: req.method,
+      url: req.originalUrl,
+      contentType: req.headers["content-type"],
+      hasSignatureHeader: Boolean(req.headers["v-c-signature"]),
+      hasRawBody: typeof req.rawBody === "string" && req.rawBody.length > 0,
+      rawBodyLength: typeof req.rawBody === "string" ? req.rawBody.length : 0,
+    });
+
     // Verify the signature before processing anything.
     // req.rawBody was captured by the express.json() verify callback.
     const signatureHeader = req.headers["v-c-signature"];
     const rawBody = req.rawBody;
 
+    // Surface the raw body for debugging exactly what CyberSource signed/sent.
+    debugLog("Raw body:", rawBody);
+    debugLog("v-c-signature header:", signatureHeader);
+
     if (!verifyWebhookSignature(signatureHeader, rawBody)) {
       console.warn("[CyberSource Webhook] Signature verification failed — rejecting request.");
       return res.status(401).json({ error: "Invalid webhook signature" });
     }
+
+    debugLog("Signature verification passed.");
 
     // Log the entire parsed body so we can see every key CyberSource sends.
     console.log("[CyberSource Webhook] Received req.body:", JSON.stringify(req.body, null, 2));
@@ -947,34 +977,64 @@ const handleCybersourceWebhook = async (req, res) => {
     // which is either a compact JWE string (MLE enabled) or a plain object.
     const rawPayload = req.body?.payload;
 
+    debugLog("Payload envelope", {
+      eventType: req.body?.eventType,
+      webhookId: req.body?.webhookId,
+      productId: req.body?.productId,
+      organizationId: req.body?.organizationId,
+      eventDate: req.body?.eventDate,
+      transactionTraceId: req.body?.transactionTraceId,
+      retryNumber: req.body?.retryNumber,
+      requestType: req.body?.requestType,
+      rawPayloadType: typeof rawPayload,
+      rawPayloadIsJwe: isJwe(rawPayload),
+    });
+
     // For Unified Checkout, the payload may arrive as a compact JWE string (MLE enabled)
     // or as a plain object (sandbox / MLE disabled). Decrypt when needed.
     let payload = rawPayload;
 
     if (isJwe(rawPayload)) {
+      debugLog("Payload is a JWE — attempting MLE decryption.");
+
       if (!mleIsConfigured()) {
         console.error("[CyberSource Webhook] Received an encrypted payload but MLE is not configured.");
         return res.status(500).json({ error: "MLE decryption is not configured." });
       }
 
       payload = decryptNotification(rawPayload);
-    }
-
-    // CyberSource Manual Test webhook sends:
-    // { "payloads": { "testPayload": { "message": "Yay! Your webhook integration worked! ..." } } }
-    if (req.body?.payloads?.testPayload) {
-      console.log("[CyberSource Webhook] Manual Test verified successfully:", req.body.payloads.testPayload.message);
-      return res.status(200).json({ received: true, test: true });
+      debugLog("MLE decryption succeeded.");
+    } else {
+      debugLog("Payload is already plaintext — skipping decryption.");
     }
 
     // Do not assume a fixed schema — log the full plaintext payload from CyberSource
     // so every field it sends is visible.
     console.log("[CyberSource Webhook] Decrypted payload (full):", JSON.stringify(payload, null, 2));
 
+    // CyberSource Manual Test (EBC2 "Send test") delivers:
+    // { eventType, webhookId, productId, organizationId, eventDate, transactionTraceId,
+    //   retryNumber, requestType, payload: { message: "Yay! Your webhook integration worked! ..." } }
+    if (typeof payload?.message === "string" && payload.message.includes("Your webhook integration worked")) {
+      console.log("[CyberSource Webhook] Manual Test verified successfully:", payload.message);
+      debugLog("Manual test handled.", { durationMs: Date.now() - startedAt });
+      return res.status(200).json({ received: true, test: true });
+    }
+
+    debugLog("Transaction event processed.", {
+      eventType: req.body?.eventType,
+      durationMs: Date.now() - startedAt,
+    });
+
     // Respond immediately with 200 OK so CyberSource knows delivery succeeded
     return res.status(200).json({ received: true });
   } catch (error) {
     console.error("[CyberSource Webhook Error]:", error);
+    debugLog("Webhook handler threw an error.", {
+      message: error?.message,
+      stack: error?.stack,
+      durationMs: Date.now() - startedAt,
+    });
     return res.status(500).json({ error: "Failed to process webhook event" });
   }
 };
