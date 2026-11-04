@@ -943,9 +943,9 @@ const handleCybersourceWebhook = async (req, res) => {
     // Log the entire parsed body so we can see every key CyberSource sends.
     console.log("[CyberSource Webhook] Received req.body:", JSON.stringify(req.body, null, 2));
 
-    // CyberSource Unified Checkout webhook body shape:
-    // { organizationId, webhookId, productId, eventType, eventDate, payload: <JWE string or plain object> }
-    const { webhookId, eventType, eventDate, organizationId, productId, payload: rawPayload } = req.body || {};
+    // CyberSource Unified Checkout wraps the transaction data in the `payload` field,
+    // which is either a compact JWE string (MLE enabled) or a plain object.
+    const rawPayload = req.body?.payload;
 
     // For Unified Checkout, the payload may arrive as a compact JWE string (MLE enabled)
     // or as a plain object (sandbox / MLE disabled). Decrypt when needed.
@@ -967,44 +967,9 @@ const handleCybersourceWebhook = async (req, res) => {
       return res.status(200).json({ received: true, test: true });
     }
 
-    // Support both direct payload structure:
-    // payload = { id, status, outcome, details: { processorInformation, paymentInformation, riskInformation, ... } }
-    // and wrapped transactionResult structure:
-    // payload = { transactionResult: { id, status, details: { ... } } }
-    const txData = payload?.transactionResult || payload || {};
-    const details = txData.details || {};
-
-    const transactionId = txData.id || details.id || null;
-    const status = txData.status || txData.outcome || null;
-    const processorTransactionId = details.processorInformation?.transactionId || details.processorInformation?.systemTraceAuditNumber || null;
-    const cardType = details.paymentInformation?.card?.type || details.paymentAccountInformation?.card?.type || details.paymentAccountInformation?.card?.brandName || null;
-    const riskScore = details.riskInformation?.score?.result || null;
-    const orderCode = details.clientReferenceInformation?.code || null;
-    const amount = details.orderInformation?.amountDetails?.totalAmount || null;
-    const currency = details.orderInformation?.amountDetails?.currency || null;
-
-    console.log("[CyberSource Webhook] Notification received:", {
-      webhookId,
-      eventType,
-      eventDate,
-      organizationId,
-      productId,
-      transactionId,
-      status,
-    });
-
-    if (eventType === "uc.orders.transactionresults") {
-      console.log("[CyberSource Webhook] Transaction result:", {
-        transactionId,
-        status,
-        processorTransactionId,
-        cardType,
-        riskScore,
-        orderCode,
-        amount,
-        currency,
-      });
-    }
+    // Do not assume a fixed schema — log the full plaintext payload from CyberSource
+    // so every field it sends is visible.
+    console.log("[CyberSource Webhook] Decrypted payload (full):", JSON.stringify(payload, null, 2));
 
     // Respond immediately with 200 OK so CyberSource knows delivery succeeded
     return res.status(200).json({ received: true });
